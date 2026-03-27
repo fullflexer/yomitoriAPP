@@ -30,7 +30,7 @@ export default async function CaseUploadPage({ params }: UploadPageProps) {
         <CardContent className="space-y-3 text-sm leading-6 text-slate-600">
           <p>・文書は PDF または画像を選択します。</p>
           <p>・同意チェックが入るまでアップロードボタンは無効です。</p>
-          <p>・アップロード後は documents API で OCR ジョブをキュー投入します。</p>
+          <p>・ブラウザから直接ストレージへアップロード後、documents API で OCR ジョブをキュー投入します。</p>
         </CardContent>
       </Card>
     </div>

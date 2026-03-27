@@ -1,4 +1,23 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Worker } from "bullmq";
+
+// .env 手動ロード（Next.js 外プロセス用）
+try {
+  const content = readFileSync(resolve(process.cwd(), ".env"), "utf-8");
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq < 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let val = trimmed.slice(eq + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    if (!process.env[key]) process.env[key] = val;
+  }
+} catch { /* .env not found */ }
 
 import { getRedisConnection } from "@/lib/queue/client";
 import { OCR_QUEUE_NAME, type OcrJobData, processOcrJob } from "@/lib/queue/jobs/ocr-job";

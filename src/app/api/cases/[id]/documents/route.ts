@@ -1,12 +1,10 @@
-import { randomUUID } from "node:crypto";
-
 import { NextResponse } from "next/server";
 
 import { createDocument, getCaseAggregate } from "@/lib/cases/repository";
-import { jsonError, parseBoolean } from "@/lib/http";
+import { jsonError, parseJsonBody } from "@/lib/http";
 import { runOcrPipeline } from "@/lib/ocr/pipeline";
 import { enqueueOcrJob } from "@/lib/queue/jobs/ocr-job";
-import { deleteUploadObject, uploadUploadObject } from "@/lib/storage/r2-client";
+import { deleteUploadObject } from "@/lib/storage/r2-client";
 
 type RouteContext = {
   params: Promise<{
@@ -14,8 +12,19 @@ type RouteContext = {
   }>;
 };
 
-function sanitizeFilename(filename: string) {
-  return filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+type CreateDocumentBody = {
+  r2Key?: string;
+  originalFilename?: string;
+  documentType?: string;
+  consent?: boolean;
+};
+
+function sanitizeText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isCaseDocumentKey(caseId: string, r2Key: string) {
+  return r2Key.startsWith(`cases/${caseId}/documents/`);
 }
 
 function serializeDocument(row: Record<string, unknown>) {
@@ -68,10 +77,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function POST(request: Request, context: RouteContext) {
   const { id } = await context.params;
-  const formData = await request.formData();
-  const consent = parseBoolean(formData.get("consent"));
+  const body = await parseJsonBody<CreateDocumentBody>(request);
 
-  if (!consent) {
+  if (body.consent !== true) {
     return jsonError(
       "OCR 処理を利用するには同意が必要です。",
       400,
@@ -79,11 +87,20 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const file = formData.get("file");
-  const documentType = formData.get("documentType");
+  const r2Key = sanitizeText(body.r2Key);
+  const originalFilename = sanitizeText(body.originalFilename);
+  const documentType = sanitizeText(body.documentType);
 
-  if (!(file instanceof File)) {
-    return jsonError("アップロードするファイルが必要です。", 400);
+  if (!r2Key) {
+    return jsonError("r2Key は必須です。", 400);
+  }
+
+  if (!originalFilename) {
+    return jsonError("originalFilename は必須です。", 400);
+  }
+
+  if (!documentType) {
+    return jsonError("documentType は必須です。", 400);
   }
 
   const aggregate = await getCaseAggregate(id);
@@ -91,29 +108,16 @@ export async function POST(request: Request, context: RouteContext) {
     return jsonError("ケースが見つかりません。", 404);
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const r2Key = [
-    "cases",
-    id,
-    "documents",
-    `${randomUUID()}-${sanitizeFilename(file.name || "upload.bin")}`,
-  ].join("/");
-
-  await uploadUploadObject({
-    key: r2Key,
-    body: buffer,
-    contentType: file.type || "application/octet-stream",
-  });
+  if (!isCaseDocumentKey(id, r2Key)) {
+    return jsonError("不正なアップロードキーです。", 400);
+  }
 
   try {
     const created = await createDocument({
       caseId: id,
       r2Key,
-      originalFilename: file.name || "upload.bin",
-      documentType:
-        typeof documentType === "string" && documentType.trim()
-          ? documentType.trim()
-          : "unknown",
+      originalFilename,
+      documentType,
       status: "queued",
       ocrResult: {},
     });

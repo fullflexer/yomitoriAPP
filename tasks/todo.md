@@ -232,3 +232,19 @@
 - `src/lib/ocr/provider-factory.ts` を追加し、既定 provider を `glm-ocr` に変更した。`src/lib/ocr/pipeline.ts` の default provider 生成はこの factory 経由に差し替えた。`OcrAdapter` 自体の constructor 契約は変更していない。
 - `.env.example` に `OCR_PROVIDER=glm-ocr` / `OLLAMA_BASE_URL` / `OLLAMA_MODEL` を追加した。既定 provider と齟齬が出ないよう、upload UI と API の consent 文言は `Claude Vision` 固定から generic な `OCR 処理` 表現へ更新し、`tests/e2e/happy-path.test.ts` も追従させた。
 - 検証: `pnpm exec tsc --noEmit --pretty false` 成功。`pnpm exec vitest run tests/unit/ocr/adapter.test.ts tests/unit/ocr/glm-ocr.test.ts tests/unit/consent/consent.test.ts tests/integration/ocr-pipeline.test.ts` 成功（4 files, 10 tests passed）。
+## 2026-03-27 Direct Presigned Upload
+- [x] 既存の documents upload route / uploader / storage client / consent test を確認し、server-proxy upload 依存箇所を特定する
+- [x] `src/lib/storage/r2-client.ts` に presigned PUT URL 生成 helper を追加する
+- [x] `src/app/api/cases/[id]/documents/presign/route.ts` を新規作成し、consent 必須・`r2Key` 発行・presigned URL 返却を実装する
+- [x] `src/app/api/cases/[id]/documents/route.ts` を JSON metadata commit 方式へ変更し、DB 作成 + OCR enqueue のみ行うよう修正する
+- [x] `src/components/upload/DocumentUploader.tsx` を `presign -> direct PUT -> metadata POST` フローへ変更し、既存の進捗/成功/失敗表示を維持する
+- [x] 対象 unit test / typecheck を実行し、結果と残留リスクを Review に追記する
+
+## Review
+- `src/app/api/cases/[id]/documents/presign/route.ts` を追加し、`consent !== true` は 400、`filename` / `contentType` 必須、存在する case 配下の `cases/{caseId}/documents/{uuid}-{sanitized_filename}` を発行して `uploadUrl` と `r2Key` を返すようにした。
+- `src/app/api/cases/[id]/documents/route.ts` は `formData` 受信を廃止し、`{ r2Key, originalFilename, documentType, consent }` の JSON commit route へ変更した。`r2Key` が当該 case 配下でない場合は 400 で拒否し、成功時は従来どおり document 作成と OCR queue enqueue を行う。
+- `src/components/upload/DocumentUploader.tsx` は `presign -> MinIO へ直接 PUT -> metadata commit` の3段階へ切り替えた。ファイル単位の進捗表示、複数ファイル処理、成功/失敗集計は維持した。
+- `src/lib/storage/r2-client.ts` に `generatePresignedPutUrl()` を追加し、既存 `createPresignedUploadUrl()` は互換 wrapper にした。既存の diagram upload/download 経路には影響を入れていない。
+- `tests/unit/consent/consent.test.ts` を JSON commit 契約へ更新し、`tests/unit/consent/presign.test.ts` を追加して consent 必須と `r2Key` 生成を検証した。
+- 検証: `pnpm exec vitest run tests/unit/consent/consent.test.ts tests/unit/consent/presign.test.ts` 成功（2 files, 6 tests passed）。`pnpm exec tsc --noEmit --pretty false` 成功。
+- 残留リスク: ブラウザから MinIO への直接 PUT は CORS 設定に依存する。今回の実装では `docker-compose.yml` は変更しておらず、ユーザー前提どおり MinIO 側が当該 origin を許可していることを前提としている。

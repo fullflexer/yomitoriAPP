@@ -60,11 +60,11 @@ export function getUploadsBucket() {
   return getRequiredEnv("S3_BUCKET");
 }
 
-export async function createPresignedUploadUrl({
-  key,
+export async function generatePresignedPutUrl(
+  key: string,
+  contentType: string,
   expiresIn = DEFAULT_EXPIRY_SECONDS,
-  contentType,
-}: PresignedUrlParams) {
+) {
   return getSignedUrl(
     getS3Client(),
     new PutObjectCommand({
@@ -73,6 +73,18 @@ export async function createPresignedUploadUrl({
       ContentType: contentType,
     }),
     { expiresIn },
+  );
+}
+
+export async function createPresignedUploadUrl({
+  key,
+  expiresIn = DEFAULT_EXPIRY_SECONDS,
+  contentType,
+}: PresignedUrlParams) {
+  return generatePresignedPutUrl(
+    key,
+    contentType ?? "application/octet-stream",
+    expiresIn,
   );
 }
 

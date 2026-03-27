@@ -20,8 +20,7 @@ describe("GlmOcrProvider", () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          message: {
-            content: JSON.stringify({
+          response: JSON.stringify({
               rawText: "戸主 山田太郎",
               fields: {
                 headOfHousehold: {
@@ -36,7 +35,6 @@ describe("GlmOcrProvider", () => {
               },
               warnings: [],
             }),
-          },
           prompt_eval_count: 12,
           eval_count: 34,
         }),
@@ -57,23 +55,18 @@ describe("GlmOcrProvider", () => {
     await provider.extract(TEST_INPUT);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:11434/api/chat", {
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:11434/api/generate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: "glm-ocr-test",
-        messages: [
-          {
-            role: "user",
-            content: [
-              buildKosekiExtractionPrompt(),
-              `Document type hint: ${TEST_INPUT.documentType}`,
-            ].join("\n\n"),
-            images: [TEST_INPUT.imageBuffer.toString("base64")],
-          },
-        ],
+        prompt: [
+          buildKosekiExtractionPrompt(),
+          `Document type hint: ${TEST_INPUT.documentType}`,
+        ].join("\n\n"),
+        images: [TEST_INPUT.imageBuffer.toString("base64")],
         stream: false,
       }),
     });
@@ -85,8 +78,7 @@ describe("GlmOcrProvider", () => {
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            message: {
-              content: JSON.stringify({
+            response: JSON.stringify({
                 rawText: "戸主 山田太郎",
                 fields: {
                   headOfHousehold: {

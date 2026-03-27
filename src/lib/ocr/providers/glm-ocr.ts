@@ -11,12 +11,11 @@ type GlmOcrProviderOptions = {
   model?: string;
 };
 
-type OllamaChatResponse = {
-  message?: {
-    content?: string;
-  };
+type OllamaGenerateResponse = {
+  response?: string;
   eval_count?: number;
   prompt_eval_count?: number;
+  done?: boolean;
 };
 
 export class GlmOcrProvider implements OcrProvider {
@@ -43,20 +42,15 @@ export class GlmOcrProvider implements OcrProvider {
     let response: Response;
 
     try {
-      response = await fetch(`${this.baseUrl}/api/chat`, {
+      response = await fetch(`${this.baseUrl}/api/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: this.model,
-          messages: [
-            {
-              role: "user",
-              content: prompt,
-              images: [imageBase64],
-            },
-          ],
+          prompt,
+          images: [imageBase64],
           stream: false,
         }),
       });
@@ -72,8 +66,8 @@ export class GlmOcrProvider implements OcrProvider {
       throw new Error(`Ollama chat request failed with status ${response.status}${suffix}`);
     }
 
-    const responseBody = (await response.json()) as OllamaChatResponse;
-    const responseText = responseBody.message?.content?.trim();
+    const responseBody = (await response.json()) as OllamaGenerateResponse;
+    const responseText = responseBody.response?.trim();
 
     if (!responseText) {
       throw new Error("GLM-OCR returned no text content");
@@ -96,7 +90,7 @@ export class GlmOcrProvider implements OcrProvider {
   }
 }
 
-function getTotalTokensUsed(response: OllamaChatResponse) {
+function getTotalTokensUsed(response: OllamaGenerateResponse) {
   return (response.eval_count ?? 0) + (response.prompt_eval_count ?? 0);
 }
 
