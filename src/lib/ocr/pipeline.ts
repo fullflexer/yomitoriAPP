@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+
+import { query, withTransaction, type DbQuery, type DbTransactionClient } from "@/lib/db/client";
 import { OcrAdapter } from "@/lib/ocr/adapter";
 import { MockOcrProvider } from "@/lib/ocr/providers/mock";
 import type { DocumentType, OcrProvider, OcrResult } from "@/lib/ocr/types";
@@ -23,79 +26,53 @@ type PipelineDocumentUpdate = {
   estimatedCostUsd?: number;
 };
 
-type PipelineDocumentDelegate = {
-  findUniqueOrThrow(args: {
-    where: { id: string };
-    select: {
-      id: true;
-      caseId: true;
-      r2Key: true;
-      originalFilename: true;
-      documentType: true;
-      status: true;
-    };
-  }): Promise<PipelineDocument>;
-  update(args: {
-    where: { id: string };
-    data: PipelineDocumentUpdate;
-  }): Promise<unknown>;
-};
-
 type PipelinePersonCreateData = {
   caseId: string;
   sourceDocumentId: string;
   fullName: string;
   fullNameKana: string | null;
-  birthDate: Date | null;
-  deathDate: Date | null;
+  birthDate: string | null;
+  deathDate: string | null;
   gender: string | null;
   address: string | null;
-};
-
-type PipelinePersonDelegate = {
-  deleteMany(args: {
-    where: { sourceDocumentId: string };
-  }): Promise<{ count: number }>;
-  create(args: {
-    data: PipelinePersonCreateData;
-    select: {
-      id: true;
-    };
-  }): Promise<{ id: string }>;
 };
 
 type PipelinePersonEventCreateData = {
   personId: string;
   documentId: string;
   eventType: string;
-  eventDate: Date | null;
+  eventDate: string | null;
   eventDateRaw: string | null;
   counterpartPersonId: string | null;
   rawText: string | null;
   confidence: number | null;
 };
 
-type PipelinePersonEventDelegate = {
-  deleteMany(args: {
-    where: { documentId: string };
-  }): Promise<{ count: number }>;
-  createMany(args: {
-    data: PipelinePersonEventCreateData[];
-  }): Promise<{ count: number }>;
+type PipelineDocumentRow = {
+  id: string;
+  caseId: string;
+  r2Key: string;
+  originalFilename: string;
+  documentType: string;
+  status: string;
 };
 
-type OcrPipelineTransaction = {
-  document: PipelineDocumentDelegate;
-  person: PipelinePersonDelegate;
-  personEvent: PipelinePersonEventDelegate;
+export type OcrPipelineTransactionDb = {
+  updateDocument(documentId: string, data: PipelineDocumentUpdate): Promise<void>;
+  deletePersonsBySourceDocumentId(documentId: string): Promise<number>;
+  deletePersonEventsByDocumentId(documentId: string): Promise<number>;
+  insertPerson(data: PipelinePersonCreateData): Promise<{ id: string }>;
+  insertPersonEvents(data: PipelinePersonEventCreateData[]): Promise<number>;
 };
 
-export type OcrPipelinePrisma = OcrPipelineTransaction & {
-  $transaction<T>(callback: (tx: OcrPipelineTransaction) => Promise<T>): Promise<T>;
+export type OcrPipelineDb = {
+  getDocumentOrThrow(documentId: string): Promise<PipelineDocument>;
+  updateDocument(documentId: string, data: PipelineDocumentUpdate): Promise<void>;
+  runInTransaction<T>(callback: (db: OcrPipelineTransactionDb) => Promise<T>): Promise<T>;
 };
 
 export type OcrPipelineDeps = {
-  prisma: OcrPipelinePrisma;
+  db: OcrPipelineDb;
   downloadObject: (key: string) => Promise<Buffer>;
   preprocessImage: (buffer: Buffer) => Promise<Buffer>;
   providerFactory: () => OcrProvider | Promise<OcrProvider>;
@@ -108,14 +85,37 @@ type PersistedPerson = {
   persistedId: string;
 };
 
-const DOCUMENT_SELECT = {
-  id: true,
-  caseId: true,
-  r2Key: true,
-  originalFilename: true,
-  documentType: true,
-  status: true,
-} as const;
+const defaultPipelineDb: OcrPipelineDb = {
+  async getDocumentOrThrow(documentId) {
+    const result = await query<PipelineDocumentRow>(
+      `
+        SELECT
+          id,
+          case_id AS "caseId",
+          r2_key AS "r2Key",
+          original_filename AS "originalFilename",
+          document_type AS "documentType",
+          status
+        FROM documents
+        WHERE id = $1
+      `,
+      [documentId],
+    );
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new Error(`Document not found: ${documentId}`);
+    }
+
+    return row;
+  },
+  async updateDocument(documentId, data) {
+    await updateDocumentRecord(query, documentId, data);
+  },
+  async runInTransaction(callback) {
+    return withTransaction((client) => callback(createPipelineTransactionDb(client)));
+  },
+};
 
 export async function runOcrPipeline(documentId: string): Promise<void> {
   const runner = createOcrPipelineRunner();
@@ -130,20 +130,10 @@ export function createOcrPipelineRunner(
     let document: PipelineDocument | null = null;
 
     try {
-      document = await deps.prisma.document.findUniqueOrThrow({
-        where: {
-          id: documentId,
-        },
-        select: DOCUMENT_SELECT,
-      });
+      document = await deps.db.getDocumentOrThrow(documentId);
 
-      await deps.prisma.document.update({
-        where: {
-          id: documentId,
-        },
-        data: {
-          status: "processing",
-        },
+      await deps.db.updateDocument(documentId, {
+        status: "processing",
       });
 
       const originalBuffer = await deps.downloadObject(document.r2Key);
@@ -158,7 +148,7 @@ export function createOcrPipelineRunner(
       const parseResult = deps.parseResult(ocrResult);
 
       await persistPipelineSuccess({
-        prisma: deps.prisma,
+        db: deps.db,
         document,
         ocrResult,
         parseResult,
@@ -170,13 +160,8 @@ export function createOcrPipelineRunner(
       });
 
       if (document) {
-        await deps.prisma.document.update({
-          where: {
-            id: document.id,
-          },
-          data: {
-            status: "ocr_failed",
-          },
+        await deps.db.updateDocument(document.id, {
+          status: "ocr_failed",
         });
       }
 
@@ -189,7 +174,7 @@ async function resolveOcrPipelineDeps(
   overrides: Partial<OcrPipelineDeps>,
 ): Promise<OcrPipelineDeps> {
   return {
-    prisma: overrides.prisma ?? (await getDefaultPrisma()),
+    db: overrides.db ?? defaultPipelineDb,
     downloadObject: overrides.downloadObject ?? defaultDownloadObject,
     preprocessImage: overrides.preprocessImage ?? defaultPreprocessImage,
     providerFactory: overrides.providerFactory ?? createDefaultProvider,
@@ -199,12 +184,12 @@ async function resolveOcrPipelineDeps(
 }
 
 async function persistPipelineSuccess({
-  prisma,
+  db,
   document,
   ocrResult,
   parseResult,
 }: {
-  prisma: OcrPipelinePrisma;
+  db: OcrPipelineDb;
   document: PipelineDocument;
   ocrResult: OcrResult;
   parseResult: ParseResult;
@@ -220,17 +205,9 @@ async function persistPipelineSuccess({
     parsed: parseResult,
   };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.personEvent.deleteMany({
-      where: {
-        documentId: document.id,
-      },
-    });
-    await tx.person.deleteMany({
-      where: {
-        sourceDocumentId: document.id,
-      },
-    });
+  await db.runInTransaction(async (tx) => {
+    await tx.deletePersonEventsByDocumentId(document.id);
+    await tx.deletePersonsBySourceDocumentId(document.id);
 
     const persistedPersons = await persistPersons({
       tx,
@@ -245,24 +222,17 @@ async function persistPipelineSuccess({
     });
 
     if (personEvents.length > 0) {
-      await tx.personEvent.createMany({
-        data: personEvents,
-      });
+      await tx.insertPersonEvents(personEvents);
     }
 
-    await tx.document.update({
-      where: {
-        id: document.id,
-      },
-      data: {
-        status: "ocr_complete",
-        ocrResult: persistedResult,
-        requiresReview: reviewReasons.length > 0,
-        reviewReason: reviewReasons,
-        ocrConfidence: roundConfidence(ocrResult.confidence),
-        tokensUsed,
-        estimatedCostUsd,
-      },
+    await tx.updateDocument(document.id, {
+      status: "ocr_complete",
+      ocrResult: persistedResult,
+      requiresReview: reviewReasons.length > 0,
+      reviewReason: reviewReasons,
+      ocrConfidence: roundConfidence(ocrResult.confidence),
+      tokensUsed,
+      estimatedCostUsd,
     });
   });
 }
@@ -273,7 +243,7 @@ async function persistPersons({
   documentId,
   persons,
 }: {
-  tx: OcrPipelineTransaction;
+  tx: OcrPipelineTransactionDb;
   caseId: string;
   documentId: string;
   persons: ParsedPerson[];
@@ -281,20 +251,15 @@ async function persistPersons({
   const persisted: PersistedPerson[] = [];
 
   for (const person of persons) {
-    const created = await tx.person.create({
-      data: {
-        caseId,
-        sourceDocumentId: documentId,
-        fullName: person.fullName,
-        fullNameKana: person.fullNameKana ?? null,
-        birthDate: toDateOnly(person.birthDate),
-        deathDate: toDateOnly(person.deathDate),
-        gender: person.gender ?? null,
-        address: person.address ?? null,
-      },
-      select: {
-        id: true,
-      },
+    const created = await tx.insertPerson({
+      caseId,
+      sourceDocumentId: documentId,
+      fullName: person.fullName,
+      fullNameKana: person.fullNameKana ?? null,
+      birthDate: toDateOnly(person.birthDate),
+      deathDate: toDateOnly(person.deathDate),
+      gender: person.gender ?? null,
+      address: person.address ?? null,
     });
 
     persisted.push({
@@ -390,7 +355,7 @@ function toDateOnly(value?: string) {
     return null;
   }
 
-  return new Date(`${value}T00:00:00.000Z`);
+  return value;
 }
 
 function estimateCostUsd(tokensUsed: number) {
@@ -409,6 +374,188 @@ function roundConfidence(value: number) {
   return Math.round(clamped * 10_000) / 10_000;
 }
 
+function buildInsertPlaceholders(rowCount: number, columnCount: number) {
+  const values: string[] = [];
+
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    const rowValues: string[] = [];
+
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      rowValues.push(`$${rowIndex * columnCount + columnIndex + 1}`);
+    }
+
+    values.push(`(${rowValues.join(", ")})`);
+  }
+
+  return values.join(", ");
+}
+
+function getClientQuery(client: DbTransactionClient): DbQuery {
+  return (text, params) => client.query(text, params as never[]);
+}
+
+async function updateDocumentRecord(
+  runQuery: DbQuery,
+  documentId: string,
+  data: PipelineDocumentUpdate,
+) {
+  const values: unknown[] = [documentId];
+  const assignments: string[] = [];
+
+  if ("status" in data) {
+    values.push(data.status ?? null);
+    assignments.push(`status = $${values.length}`);
+  }
+
+  if ("ocrResult" in data) {
+    values.push(JSON.stringify(data.ocrResult ?? {}));
+    assignments.push(`ocr_result = $${values.length}::jsonb`);
+  }
+
+  if ("requiresReview" in data) {
+    values.push(data.requiresReview ?? false);
+    assignments.push(`requires_review = $${values.length}`);
+  }
+
+  if ("reviewReason" in data) {
+    values.push(data.reviewReason ?? []);
+    assignments.push(`review_reason = $${values.length}::text[]`);
+  }
+
+  if ("ocrConfidence" in data) {
+    values.push(data.ocrConfidence ?? 0);
+    assignments.push(`ocr_confidence = $${values.length}`);
+  }
+
+  if ("tokensUsed" in data) {
+    values.push(data.tokensUsed ?? null);
+    assignments.push(`tokens_used = $${values.length}`);
+  }
+
+  if ("estimatedCostUsd" in data) {
+    values.push(data.estimatedCostUsd ?? null);
+    assignments.push(`estimated_cost_usd = $${values.length}`);
+  }
+
+  if (assignments.length === 0) {
+    return;
+  }
+
+  const result = await runQuery(
+    `
+      UPDATE documents
+      SET ${assignments.join(", ")}
+      WHERE id = $1
+    `,
+    values,
+  );
+
+  if ((result.rowCount ?? 0) === 0) {
+    throw new Error(`Document not found: ${documentId}`);
+  }
+}
+
+function createPipelineTransactionDb(client: DbTransactionClient): OcrPipelineTransactionDb {
+  const clientQuery = getClientQuery(client);
+
+  return {
+    updateDocument(documentId, data) {
+      return updateDocumentRecord(clientQuery, documentId, data);
+    },
+    async deletePersonsBySourceDocumentId(documentId) {
+      const result = await clientQuery(
+        `
+          DELETE FROM persons
+          WHERE source_document_id = $1
+        `,
+        [documentId],
+      );
+
+      return result.rowCount ?? 0;
+    },
+    async deletePersonEventsByDocumentId(documentId) {
+      const result = await clientQuery(
+        `
+          DELETE FROM person_events
+          WHERE document_id = $1
+        `,
+        [documentId],
+      );
+
+      return result.rowCount ?? 0;
+    },
+    async insertPerson(data) {
+      const id = randomUUID();
+
+      await clientQuery(
+        `
+          INSERT INTO persons (
+            id,
+            case_id,
+            source_document_id,
+            full_name,
+            full_name_kana,
+            birth_date,
+            death_date,
+            gender,
+            address
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `,
+        [
+          id,
+          data.caseId,
+          data.sourceDocumentId,
+          data.fullName,
+          data.fullNameKana,
+          data.birthDate,
+          data.deathDate,
+          data.gender,
+          data.address,
+        ],
+      );
+
+      return { id };
+    },
+    async insertPersonEvents(data) {
+      if (data.length === 0) {
+        return 0;
+      }
+
+      const values = data.flatMap((event) => [
+        randomUUID(),
+        event.personId,
+        event.documentId,
+        event.eventType,
+        event.eventDate,
+        event.eventDateRaw,
+        event.counterpartPersonId,
+        event.rawText,
+        event.confidence,
+      ]);
+      const result = await clientQuery(
+        `
+          INSERT INTO person_events (
+            id,
+            person_id,
+            document_id,
+            event_type,
+            event_date,
+            event_date_raw,
+            counterpart_person_id,
+            raw_text,
+            confidence
+          )
+          VALUES ${buildInsertPlaceholders(data.length, 9)}
+        `,
+        values,
+      );
+
+      return result.rowCount ?? 0;
+    },
+  };
+}
+
 async function defaultPreprocessImage(buffer: Buffer) {
   const { preprocessImage } = await import("@/lib/ocr/preprocessing");
   return preprocessImage(buffer);
@@ -417,11 +564,6 @@ async function defaultPreprocessImage(buffer: Buffer) {
 async function defaultDownloadObject(key: string) {
   const { downloadUploadObject } = await import("@/lib/storage/r2-client");
   return downloadUploadObject(key);
-}
-
-async function getDefaultPrisma(): Promise<OcrPipelinePrisma> {
-  const { prisma } = await import("@/lib/db/client");
-  return prisma as unknown as OcrPipelinePrisma;
 }
 
 async function createDefaultProvider(): Promise<OcrProvider> {

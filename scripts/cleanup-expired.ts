@@ -1,10 +1,8 @@
 import { cleanupExpiredCases, formatCleanupReport } from "../src/lib/cleanup/cleanup-expired";
-import { prisma } from "../src/lib/db/client";
 import { deleteUploadObject } from "../src/lib/storage/r2-client";
 
 async function main() {
   const result = await cleanupExpiredCases({
-    prisma,
     deleteObject: deleteUploadObject,
   });
 

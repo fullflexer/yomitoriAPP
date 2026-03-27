@@ -1,3 +1,5 @@
+import { query } from "@/lib/db/client";
+
 type DecimalLike = number | string | { toNumber(): number } | { toString(): string };
 
 type CostSummaryDocumentRow = {
@@ -6,20 +8,8 @@ type CostSummaryDocumentRow = {
   estimatedCostUsd: DecimalLike | null;
 };
 
-type CostSummaryDocumentDelegate = {
-  findMany(args: {
-    where: { caseId: string };
-    select: {
-      id: true;
-      tokensUsed: true;
-      estimatedCostUsd: true;
-    };
-    orderBy: { createdAt: "asc" };
-  }): Promise<CostSummaryDocumentRow[]>;
-};
-
-export type CostSummaryPrisma = {
-  document: CostSummaryDocumentDelegate;
+export type CostSummaryDb = {
+  listDocumentsByCaseId(caseId: string): Promise<CostSummaryDocumentRow[]>;
 };
 
 export type CaseCostSummary = {
@@ -31,6 +21,25 @@ export type CaseCostSummary = {
     tokensUsed: number;
     estimatedCostUsd: number;
   }>;
+};
+
+const defaultCostSummaryDb: CostSummaryDb = {
+  async listDocumentsByCaseId(caseId) {
+    const result = await query<CostSummaryDocumentRow>(
+      `
+        SELECT
+          id,
+          tokens_used AS "tokensUsed",
+          estimated_cost_usd AS "estimatedCostUsd"
+        FROM documents
+        WHERE case_id = $1
+        ORDER BY created_at ASC
+      `,
+      [caseId],
+    );
+
+    return result.rows;
+  },
 };
 
 function roundUsd(value: number) {
@@ -58,25 +67,13 @@ function toNumber(value: DecimalLike | null) {
 }
 
 export async function getCaseCostSummary({
-  prisma,
   caseId,
+  db = defaultCostSummaryDb,
 }: {
-  prisma: CostSummaryPrisma;
   caseId: string;
+  db?: CostSummaryDb;
 }): Promise<CaseCostSummary> {
-  const documents = await prisma.document.findMany({
-    where: {
-      caseId,
-    },
-    select: {
-      id: true,
-      tokensUsed: true,
-      estimatedCostUsd: true,
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
+  const documents = await db.listDocumentsByCaseId(caseId);
 
   const normalizedDocuments = documents.map((document) => ({
     id: document.id,

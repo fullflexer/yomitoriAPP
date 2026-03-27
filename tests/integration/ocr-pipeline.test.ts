@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   createOcrPipelineRunner,
-  type OcrPipelinePrisma,
+  type OcrPipelineDb,
+  type OcrPipelineTransactionDb,
 } from "../../src/lib/ocr/pipeline";
 import { MockOcrProvider } from "../../src/lib/ocr/providers/mock";
 import type { OcrResult } from "../../src/lib/ocr/types";
@@ -30,8 +31,8 @@ type StoredPerson = {
   sourceDocumentId: string;
   fullName: string;
   fullNameKana: string | null;
-  birthDate: Date | null;
-  deathDate: Date | null;
+  birthDate: string | null;
+  deathDate: string | null;
   gender: string | null;
   address: string | null;
 };
@@ -40,14 +41,63 @@ type StoredPersonEvent = {
   personId: string;
   documentId: string;
   eventType: string;
-  eventDate: Date | null;
+  eventDate: string | null;
   eventDateRaw: string | null;
   counterpartPersonId: string | null;
   rawText: string | null;
   confidence: number | null;
 };
 
-function createPipelinePrisma(seed: { documents: StoredDocument[] }) {
+function updateStoredDocument(
+  documents: StoredDocument[],
+  documentId: string,
+  data: {
+    status?: string;
+    ocrResult?: unknown;
+    requiresReview?: boolean;
+    reviewReason?: string[];
+    ocrConfidence?: number;
+    tokensUsed?: number;
+    estimatedCostUsd?: number;
+  },
+) {
+  const document = documents.find((entry) => entry.id === documentId);
+
+  if (!document) {
+    throw new Error(`Document not found: ${documentId}`);
+  }
+
+  if (data.status) {
+    document.status = data.status;
+    document.statusHistory.push(data.status);
+  }
+
+  if (data.ocrResult !== undefined) {
+    document.ocrResult = data.ocrResult;
+  }
+
+  if (data.requiresReview !== undefined) {
+    document.requiresReview = data.requiresReview;
+  }
+
+  if (data.reviewReason !== undefined) {
+    document.reviewReason = [...data.reviewReason];
+  }
+
+  if (data.ocrConfidence !== undefined) {
+    document.ocrConfidence = data.ocrConfidence;
+  }
+
+  if (data.tokensUsed !== undefined) {
+    document.tokensUsed = data.tokensUsed;
+  }
+
+  if (data.estimatedCostUsd !== undefined) {
+    document.estimatedCostUsd = data.estimatedCostUsd;
+  }
+}
+
+function createPipelineDb(seed: { documents: StoredDocument[] }) {
   const state = {
     documents: seed.documents.map((document) => ({
       ...document,
@@ -59,123 +109,78 @@ function createPipelinePrisma(seed: { documents: StoredDocument[] }) {
     personSequence: 0,
   };
 
-  const prisma: OcrPipelinePrisma = {
-    document: {
-      async findUniqueOrThrow(args) {
-        const document = state.documents.find((entry) => entry.id === args.where.id);
-
-        if (!document) {
-          throw new Error(`Document not found: ${args.where.id}`);
-        }
-
-        return {
-          id: document.id,
-          caseId: document.caseId,
-          r2Key: document.r2Key,
-          originalFilename: document.originalFilename,
-          documentType: document.documentType,
-          status: document.status,
-        };
-      },
-      async update(args) {
-        const document = state.documents.find((entry) => entry.id === args.where.id);
-
-        if (!document) {
-          throw new Error(`Document not found: ${args.where.id}`);
-        }
-
-        if (args.data.status) {
-          document.status = args.data.status;
-          document.statusHistory.push(args.data.status);
-        }
-
-        if (args.data.ocrResult !== undefined) {
-          document.ocrResult = args.data.ocrResult;
-        }
-
-        if (args.data.requiresReview !== undefined) {
-          document.requiresReview = args.data.requiresReview;
-        }
-
-        if (args.data.reviewReason !== undefined) {
-          document.reviewReason = [...args.data.reviewReason];
-        }
-
-        if (args.data.ocrConfidence !== undefined) {
-          document.ocrConfidence = args.data.ocrConfidence;
-        }
-
-        if (args.data.tokensUsed !== undefined) {
-          document.tokensUsed = args.data.tokensUsed;
-        }
-
-        if (args.data.estimatedCostUsd !== undefined) {
-          document.estimatedCostUsd = args.data.estimatedCostUsd;
-        }
-
-        return document;
-      },
+  const createTransactionDb = (): OcrPipelineTransactionDb => ({
+    async updateDocument(documentId, data) {
+      updateStoredDocument(state.documents, documentId, data);
     },
-    person: {
-      async deleteMany(args) {
-        const initialLength = state.persons.length;
-        state.persons = state.persons.filter(
-          (person) => person.sourceDocumentId !== args.where.sourceDocumentId,
-        );
+    async deletePersonsBySourceDocumentId(documentId) {
+      const initialLength = state.persons.length;
+      state.persons = state.persons.filter(
+        (person) => person.sourceDocumentId !== documentId,
+      );
 
-        return {
-          count: initialLength - state.persons.length,
-        };
-      },
-      async create(args) {
-        state.personSequence += 1;
-        const person: StoredPerson = {
-          id: `person-${state.personSequence}`,
-          caseId: args.data.caseId,
-          sourceDocumentId: args.data.sourceDocumentId,
-          fullName: args.data.fullName,
-          fullNameKana: args.data.fullNameKana,
-          birthDate: args.data.birthDate,
-          deathDate: args.data.deathDate,
-          gender: args.data.gender,
-          address: args.data.address,
-        };
-
-        state.persons.push(person);
-
-        return {
-          id: person.id,
-        };
-      },
+      return initialLength - state.persons.length;
     },
-    personEvent: {
-      async deleteMany(args) {
-        const initialLength = state.personEvents.length;
-        state.personEvents = state.personEvents.filter(
-          (event) => event.documentId !== args.where.documentId,
-        );
+    async deletePersonEventsByDocumentId(documentId) {
+      const initialLength = state.personEvents.length;
+      state.personEvents = state.personEvents.filter(
+        (event) => event.documentId !== documentId,
+      );
 
-        return {
-          count: initialLength - state.personEvents.length,
-        };
-      },
-      async createMany(args) {
-        state.personEvents.push(...args.data);
-        return {
-          count: args.data.length,
-        };
-      },
+      return initialLength - state.personEvents.length;
     },
-    async $transaction(callback) {
-      return callback({
-        document: prisma.document,
-        person: prisma.person,
-        personEvent: prisma.personEvent,
-      });
+    async insertPerson(data) {
+      state.personSequence += 1;
+      const person: StoredPerson = {
+        id: `person-${state.personSequence}`,
+        caseId: data.caseId,
+        sourceDocumentId: data.sourceDocumentId,
+        fullName: data.fullName,
+        fullNameKana: data.fullNameKana,
+        birthDate: data.birthDate,
+        deathDate: data.deathDate,
+        gender: data.gender,
+        address: data.address,
+      };
+
+      state.persons.push(person);
+
+      return {
+        id: person.id,
+      };
+    },
+    async insertPersonEvents(data) {
+      state.personEvents.push(...data);
+      return data.length;
+    },
+  });
+
+  const db: OcrPipelineDb = {
+    async getDocumentOrThrow(documentId) {
+      const document = state.documents.find((entry) => entry.id === documentId);
+
+      if (!document) {
+        throw new Error(`Document not found: ${documentId}`);
+      }
+
+      return {
+        id: document.id,
+        caseId: document.caseId,
+        r2Key: document.r2Key,
+        originalFilename: document.originalFilename,
+        documentType: document.documentType,
+        status: document.status,
+      };
+    },
+    async updateDocument(documentId, data) {
+      updateStoredDocument(state.documents, documentId, data);
+    },
+    async runInTransaction(callback) {
+      return callback(createTransactionDb());
     },
   };
 
-  return { prisma, state };
+  return { db, state };
 }
 
 describe("runOcrPipeline", () => {
@@ -244,7 +249,7 @@ describe("runOcrPipeline", () => {
       processingTimeMs: 15,
       documentType: "computerized_koseki",
     };
-    const { prisma, state } = createPipelinePrisma({
+    const { db, state } = createPipelineDb({
       documents: [
         {
           id: "doc-1",
@@ -265,7 +270,7 @@ describe("runOcrPipeline", () => {
     });
 
     const runPipeline = createOcrPipelineRunner({
-      prisma,
+      db,
       downloadObject: async () => Buffer.from("fake-image-buffer"),
       preprocessImage: async (buffer) => buffer,
       providerFactory: () => new MockOcrProvider({ fixedResult }),

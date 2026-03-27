@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCasesDb, listCases } from "@/lib/cases/repository";
+import { createCase, listCases } from "@/lib/cases/repository";
 import { jsonError, parseJsonBody, sanitizeTitle } from "@/lib/http";
 
 type CreateCaseBody = {
@@ -20,18 +20,11 @@ export async function POST(request: Request) {
     return jsonError("ケースタイトルは必須です。", 400);
   }
 
-  const created = await getCasesDb().case.create({
-    data: {
-      title,
-      status: "created",
-      matchingStatus: "pending",
-      inheritanceResult: {},
-    },
-    select: {
-      id: true,
-      title: true,
-      status: true,
-    },
+  const created = await createCase({
+    title,
+    status: "created",
+    matchingStatus: "pending",
+    inheritanceResult: {},
   });
 
   return NextResponse.json(created, { status: 201 });

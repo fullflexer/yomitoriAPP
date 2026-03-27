@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { getCaseAggregate, getCasesDb } from "@/lib/cases/repository";
+import { createDocument, getCaseAggregate } from "@/lib/cases/repository";
 import { jsonError, parseBoolean } from "@/lib/http";
 import { runOcrPipeline } from "@/lib/ocr/pipeline";
 import { enqueueOcrJob } from "@/lib/queue/jobs/ocr-job";
@@ -106,18 +106,16 @@ export async function POST(request: Request, context: RouteContext) {
   });
 
   try {
-    const created = await getCasesDb().document.create({
-      data: {
-        caseId: id,
-        r2Key,
-        originalFilename: file.name || "upload.bin",
-        documentType:
-          typeof documentType === "string" && documentType.trim()
-            ? documentType.trim()
-            : "unknown",
-        status: "queued",
-        ocrResult: {},
-      },
+    const created = await createDocument({
+      caseId: id,
+      r2Key,
+      originalFilename: file.name || "upload.bin",
+      documentType:
+        typeof documentType === "string" && documentType.trim()
+          ? documentType.trim()
+          : "unknown",
+      status: "queued",
+      ocrResult: {},
     });
 
     await enqueueOcrJob({

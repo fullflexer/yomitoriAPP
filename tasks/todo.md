@@ -198,3 +198,20 @@
 - `tests/e2e/happy-path.test.ts` と `playwright.config.ts` は追加済みだが、現環境の `node_modules` に `@playwright/test` / `playwright` バイナリが未導入のため `pnpm exec playwright ...` は実行できなかった。
 - 補足: `next build` 実行時に Next.js が `tsconfig.json` へ `allowJs`, `incremental`, `isolatedModules`, `plugins: [{ name: "next" }]`, `.next/types/**/*.ts` include, `exclude: ["node_modules"]` を自動追記した。build 系の既定値として受け入れている。
 - サブエージェント review は 2 回起動したが、この sandbox では reviewer から完了レスポンスを回収できず timeout/shutdown で終了した。代替として local diff + targeted test + build を実施し、外部 review 未完了を残留リスクとして扱う。
+
+## 2026-03-27 Prisma to pg Migration
+- [x] `prisma/schema.prisma` と `src/` / `scripts/` / `tests/` の Prisma 参照箇所を棚卸しし、`cases` / `documents` / `persons` / `person_events` / `relationships` / `heirs` の SQL 変換対象を確定する
+- [x] `src/lib/db/client.ts` を `pg.Pool` / `query()` ベースへ置き換え、Prisma import を除去する
+- [x] `src/lib/cases/repository.ts` と `src/app/api/cases/**/route.ts` を pg query ベースへ移行する
+- [x] `src/lib/ocr/pipeline.ts` / `src/lib/cleanup/cleanup-expired.ts` / `src/lib/cost/*.ts` / `scripts/cleanup-expired.ts` を pg query ベースへ移行する
+- [x] Prisma モック依存の unit / integration test を `pg` 風 query モックへ更新する
+- [x] `pnpm exec vitest run tests/unit/` と必要な追加検証を実行し、結果と review を追記する
+
+## Review
+- 着手前メモ: `@prisma/client` の直接 import は `src/lib/db/client.ts` に閉じているが、`repository` / `routes` / `pipeline` / `cleanup` / `cost` / `tests` が Prisma delegate API に依存しているため、API 互換レイヤを残さず SQL へ直接寄せる。
+- `src/lib/db/client.ts` は `pg.Pool` の singleton + `query()` + `withTransaction()` に置き換えた。`src/lib/cases/repository.ts` は case aggregate 読み出し、case/document 作成、case 更新、heirs/relationships 差し替えを明示 SQL に寄せ、`src/app/api/cases/**/route.ts` は `getCasesDb()` 依存を廃止した。
+- `src/lib/ocr/pipeline.ts` / `src/lib/cleanup/cleanup-expired.ts` / `src/lib/cost/cost-summary.ts` / `src/lib/cost/record-document-cost.ts` は Prisma delegate 型を削除し、pg 実装を持つ小さい DB インターフェースへ整理した。既定実装は SQL を実行し、tests では in-memory モックへ差し替える。
+- `tests/unit/cleanup/cleanup.test.ts` / `tests/unit/cost/cost-summary.test.ts` / `tests/integration/ocr-pipeline.test.ts` / `tests/unit/consent/consent.test.ts` を新インターフェースに追従させた。`tests/unit/diagram/pdf-renderer.test.ts` は Chromium 実体に依存しないよう `puppeteer-core` をモック化した。
+- `src/types/prisma-client.d.ts` は不要になったため削除した。`src/` / `scripts/cleanup-expired.ts` / `tests/` から `@prisma/client` / `getCasesDb()` / Prisma delegate 呼び出しは除去済み。残存する `prisma` 文字列は `scripts/test-infra.sh` の Prisma CLI 呼び出しのみで、今回対象外。
+- 検証: `pnpm exec tsc --noEmit --pretty false` 成功。`pnpm exec vitest run tests/unit/` 成功（17 files, 54 tests passed）。`pnpm exec vitest run tests/integration/ocr-pipeline.test.ts` 成功（1 file, 1 test passed）。
+- サブエージェント review は `code_reviewer` を新規 spawn したが、この sandbox では完了レスポンスを回収できず timeout のまま shutdown した。代替として local typecheck + unit/integration test を再実行し、blocking issue は未検出。

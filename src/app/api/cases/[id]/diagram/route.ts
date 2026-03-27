@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { getCaseAggregate, getCasesDb } from "@/lib/cases/repository";
+import { getCaseAggregate, updateCase } from "@/lib/cases/repository";
 import { buildDiagramArtifacts } from "@/lib/cases/workflow";
 import { jsonError } from "@/lib/http";
 import {
@@ -93,18 +93,13 @@ export async function POST(_request: Request, context: RouteContext) {
     ? aggregate.inheritanceResult
     : {};
 
-  await getCasesDb().case.update({
-    where: {
-      id,
-    },
-    data: {
-      inheritanceResult: {
-        ...previousResult,
-        diagram: {
-          svgKey,
-          pdfKey,
-          generatedAt: artifacts.generatedAt,
-        },
+  await updateCase(id, {
+    inheritanceResult: {
+      ...previousResult,
+      diagram: {
+        svgKey,
+        pdfKey,
+        generatedAt: artifacts.generatedAt,
       },
     },
   });

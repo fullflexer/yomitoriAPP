@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCaseAggregate, getCasesDb } from "@/lib/cases/repository";
+import { getCaseAggregate, replaceCaseInheritanceData } from "@/lib/cases/repository";
 import { prepareInheritance } from "@/lib/cases/workflow";
 import { jsonError } from "@/lib/http";
 
@@ -47,81 +47,28 @@ export async function POST(_request: Request, context: RouteContext) {
   }
 
   const prepared = prepareInheritance(aggregate);
-  const db = getCasesDb() as unknown as {
-    $transaction<T>(callback: (tx: Record<string, unknown>) => Promise<T>): Promise<T>;
-  };
+  const previousResult = isObject(aggregate.inheritanceResult)
+    ? aggregate.inheritanceResult
+    : {};
 
-  await db.$transaction(async (tx) => {
-    const transaction = tx as {
-      relationship: {
-        deleteMany(args: Record<string, unknown>): Promise<unknown>;
-        createMany(args: Record<string, unknown>): Promise<unknown>;
-      };
-      heir: {
-        deleteMany(args: Record<string, unknown>): Promise<unknown>;
-        createMany(args: Record<string, unknown>): Promise<unknown>;
-      };
-      case: {
-        update(args: Record<string, unknown>): Promise<unknown>;
-      };
-    };
-
-    await transaction.relationship.deleteMany({
-      where: {
-        caseId: id,
-      },
-    });
-
-    if (prepared.relationships.length > 0) {
-      await transaction.relationship.createMany({
-        data: prepared.relationships.map((relationship) => ({
-          caseId: id,
-          fromPersonId: relationship.fromPersonId,
-          toPersonId: relationship.toPersonId,
-          relationType: relationship.relationType,
-          source: "derived",
-          confidence: 0.8,
-        })),
-      });
-    }
-
-    await transaction.heir.deleteMany({
-      where: {
-        caseId: id,
-      },
-    });
-
-    if (prepared.inheritance.heirs.length > 0) {
-      await transaction.heir.createMany({
-        data: prepared.inheritance.heirs.map((heir) => ({
-          caseId: id,
-          personId: heir.personId,
-          heirClass: heir.heirClass,
-          shareNumerator: heir.shareNumerator,
-          shareDenominator: heir.shareDenominator,
-          status: "determined",
-        })),
-      });
-    }
-
-    const previousResult = isObject(aggregate.inheritanceResult)
-      ? aggregate.inheritanceResult
-      : {};
-
-    await transaction.case.update({
-      where: {
-        id,
-      },
-      data: {
-        deceasedPersonId: prepared.deceasedPersonId,
-        inheritanceResult: {
-          ...previousResult,
-          inheritance: prepared.inheritance,
-          relationshipSources: prepared.relationshipSources,
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    });
+  await replaceCaseInheritanceData({
+    caseId: id,
+    deceasedPersonId: prepared.deceasedPersonId,
+    inheritanceResult: {
+      ...previousResult,
+      inheritance: prepared.inheritance,
+      relationshipSources: prepared.relationshipSources,
+      updatedAt: new Date().toISOString(),
+    },
+    relationships: prepared.relationships.map((relationship) => ({
+      ...relationship,
+      source: "derived",
+      confidence: 0.8,
+    })),
+    heirs: prepared.inheritance.heirs.map((heir) => ({
+      ...heir,
+      status: "determined",
+    })),
   });
 
   const updated = await getCaseAggregate(id);

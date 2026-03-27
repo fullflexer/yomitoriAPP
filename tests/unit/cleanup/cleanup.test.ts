@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   cleanupExpiredCases,
-  type CleanupExpiredPrisma,
+  type CleanupExpiredDb,
 } from "../../../src/lib/cleanup/cleanup-expired";
 
 type StoredCase = {
@@ -76,7 +76,7 @@ function removeByDocumentIds<T extends { documentId: string }>(
   };
 }
 
-function createCleanupPrisma(seed?: {
+function createCleanupDb(seed?: {
   cases?: StoredCase[];
   documents?: StoredDocument[];
   persons?: StoredPerson[];
@@ -93,99 +93,62 @@ function createCleanupPrisma(seed?: {
     heirs: seed?.heirs ?? [],
   };
 
-  const prisma: CleanupExpiredPrisma = {
-    case: {
-      async findMany(args) {
-        return state.cases
-          .filter((entry) => entry.createdAt <= args.where.createdAt.lte)
-          .map((entry) => ({
-            id: entry.id,
-            documents: state.documents
-              .filter((document) => document.caseId === entry.id)
-              .map((document) => ({
-                id: document.id,
-                r2Key: document.r2Key,
-              })),
-          }));
-      },
-      async updateMany(args) {
-        const caseIdSet = new Set(args.where.id.in);
-        let count = 0;
+  const db: CleanupExpiredDb = {
+    async listExpiredCases(cutoff) {
+      return state.cases
+        .filter((entry) => entry.createdAt <= cutoff)
+        .map((entry) => ({
+          id: entry.id,
+          documents: state.documents
+            .filter((document) => document.caseId === entry.id)
+            .map((document) => ({
+              id: document.id,
+              r2Key: document.r2Key,
+            })),
+        }));
+    },
+    async deleteExpiredData(caseIds, documentIds) {
+      const caseIdSet = new Set(caseIds);
 
-        state.cases = state.cases.map((entry) => {
-          if (!caseIdSet.has(entry.id)) {
-            return entry;
-          }
+      state.cases = state.cases.map((entry) =>
+        caseIdSet.has(entry.id)
+          ? {
+              ...entry,
+              deceasedPersonId: null,
+            }
+          : entry,
+      );
 
-          count += 1;
-          return {
-            ...entry,
-            deceasedPersonId: args.data.deceasedPersonId,
-          };
-        });
+      const personEvents = removeByDocumentIds(state.personEvents, documentIds);
+      state.personEvents = personEvents.items;
 
-        return { count };
-      },
-      async deleteMany(args) {
-        const removal = removeByIds(state.cases, args.where.id.in);
-        state.cases = removal.items;
-        return { count: removal.count };
-      },
-    },
-    personEvent: {
-      async deleteMany(args) {
-        const removal = removeByDocumentIds(
-          state.personEvents,
-          args.where.documentId.in,
-        );
-        state.personEvents = removal.items;
-        return { count: removal.count };
-      },
-    },
-    heir: {
-      async deleteMany(args) {
-        const removal = removeByCaseIds(state.heirs, args.where.caseId.in);
-        state.heirs = removal.items;
-        return { count: removal.count };
-      },
-    },
-    relationship: {
-      async deleteMany(args) {
-        const removal = removeByCaseIds(
-          state.relationships,
-          args.where.caseId.in,
-        );
-        state.relationships = removal.items;
-        return { count: removal.count };
-      },
-    },
-    person: {
-      async deleteMany(args) {
-        const removal = removeByCaseIds(state.persons, args.where.caseId.in);
-        state.persons = removal.items;
-        return { count: removal.count };
-      },
-    },
-    document: {
-      async deleteMany(args) {
-        const removal = removeByCaseIds(state.documents, args.where.caseId.in);
-        state.documents = removal.items;
-        return { count: removal.count };
-      },
-    },
-    async $transaction(callback) {
-      return callback({
-        case: prisma.case,
-        personEvent: prisma.personEvent,
-        heir: prisma.heir,
-        relationship: prisma.relationship,
-        person: prisma.person,
-        document: prisma.document,
-      });
+      const heirs = removeByCaseIds(state.heirs, caseIds);
+      state.heirs = heirs.items;
+
+      const relationships = removeByCaseIds(state.relationships, caseIds);
+      state.relationships = relationships.items;
+
+      const persons = removeByCaseIds(state.persons, caseIds);
+      state.persons = persons.items;
+
+      const documents = removeByCaseIds(state.documents, caseIds);
+      state.documents = documents.items;
+
+      const cases = removeByIds(state.cases, caseIds);
+      state.cases = cases.items;
+
+      return {
+        cases: cases.count,
+        documents: documents.count,
+        persons: persons.count,
+        personEvents: personEvents.count,
+        relationships: relationships.count,
+        heirs: heirs.count,
+      };
     },
   };
 
-  return { prisma, state };
+  return { db, state };
 }
 
 describe("cleanupExpiredCases", () => {
@@ -193,7 +156,7 @@ describe("cleanupExpiredCases", () => {
     const now = new Date("2026-03-27T12:00:00.000Z");
     const expiredCaseId = "expired-case";
     const freshCaseId = "fresh-case";
-    const { prisma, state } = createCleanupPrisma({
+    const { db, state } = createCleanupDb({
       cases: [
         {
           id: expiredCaseId,
@@ -268,7 +231,7 @@ describe("cleanupExpiredCases", () => {
     const deleteObject = vi.fn(async () => undefined);
 
     const result = await cleanupExpiredCases({
-      prisma,
+      db,
       deleteObject,
       now,
     });
@@ -298,7 +261,7 @@ describe("cleanupExpiredCases", () => {
 
   it("期限切れがなければ何も削除しない", async () => {
     const now = new Date("2026-03-27T12:00:00.000Z");
-    const { prisma, state } = createCleanupPrisma({
+    const { db, state } = createCleanupDb({
       cases: [
         {
           id: "fresh-case",
@@ -317,7 +280,7 @@ describe("cleanupExpiredCases", () => {
     const deleteObject = vi.fn(async () => undefined);
 
     const result = await cleanupExpiredCases({
-      prisma,
+      db,
       deleteObject,
       now,
     });

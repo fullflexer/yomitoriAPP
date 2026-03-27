@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const getCaseAggregateMock = vi.fn();
-const documentCreateMock = vi.fn();
+const createDocumentMock = vi.fn();
 const uploadUploadObjectMock = vi.fn();
 const deleteUploadObjectMock = vi.fn();
 const enqueueOcrJobMock = vi.fn();
@@ -10,11 +10,7 @@ const runOcrPipelineMock = vi.fn();
 async function loadRoute() {
   vi.doMock("../../../src/lib/cases/repository", () => ({
     getCaseAggregate: getCaseAggregateMock,
-    getCasesDb: () => ({
-      document: {
-        create: documentCreateMock,
-      },
-    }),
+    createDocument: createDocumentMock,
   }));
   vi.doMock("../../../src/lib/storage/r2-client", () => ({
     uploadUploadObject: uploadUploadObjectMock,
@@ -85,7 +81,7 @@ describe("POST /api/cases/[id]/documents consent flow", () => {
       relationships: [],
       heirs: [],
     });
-    documentCreateMock.mockResolvedValue({
+    createDocumentMock.mockResolvedValue({
       id: "doc-1",
       caseId: "case-1",
       originalFilename: "koseki.png",
@@ -115,7 +111,7 @@ describe("POST /api/cases/[id]/documents consent flow", () => {
       status: "queued",
     });
     expect(uploadUploadObjectMock).toHaveBeenCalledTimes(1);
-    expect(documentCreateMock).toHaveBeenCalledTimes(1);
+    expect(createDocumentMock).toHaveBeenCalledTimes(1);
     expect(enqueueOcrJobMock).toHaveBeenCalledWith({
       documentId: "doc-1",
       caseId: "case-1",

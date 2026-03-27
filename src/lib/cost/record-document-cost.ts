@@ -1,48 +1,50 @@
+import { query } from "@/lib/db/client";
+
 type RecordDocumentCostInput = {
   documentId: string;
   tokensUsed: number;
   estimatedCostUsd: number;
 };
 
-type RecordDocumentCostDocument = {
-  update(args: {
-    where: { id: string };
-    data: {
-      tokensUsed: number;
-      estimatedCostUsd: number;
-    };
-    select: {
-      id: true;
-      tokensUsed: true;
-      estimatedCostUsd: true;
-    };
-  }): Promise<{
-    id: string;
-    tokensUsed: number | null;
-    estimatedCostUsd: number | string | { toNumber(): number } | null;
-  }>;
+type RecordDocumentCostRow = {
+  id: string;
+  tokensUsed: number | null;
+  estimatedCostUsd: number | string | { toNumber(): number } | null;
 };
 
-export type RecordDocumentCostPrisma = {
-  document: RecordDocumentCostDocument;
+export type RecordDocumentCostDb = {
+  updateDocumentCost(input: RecordDocumentCostInput): Promise<RecordDocumentCostRow>;
+};
+
+const defaultRecordDocumentCostDb: RecordDocumentCostDb = {
+  async updateDocumentCost(input) {
+    const result = await query<RecordDocumentCostRow>(
+      `
+        UPDATE documents
+        SET
+          tokens_used = $2,
+          estimated_cost_usd = $3
+        WHERE id = $1
+        RETURNING
+          id,
+          tokens_used AS "tokensUsed",
+          estimated_cost_usd AS "estimatedCostUsd"
+      `,
+      [input.documentId, input.tokensUsed, input.estimatedCostUsd],
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error(`Document not found: ${input.documentId}`);
+    }
+
+    return row;
+  },
 };
 
 export async function recordDocumentCost(
-  prisma: RecordDocumentCostPrisma,
   input: RecordDocumentCostInput,
+  db: RecordDocumentCostDb = defaultRecordDocumentCostDb,
 ) {
-  return prisma.document.update({
-    where: {
-      id: input.documentId,
-    },
-    data: {
-      tokensUsed: input.tokensUsed,
-      estimatedCostUsd: input.estimatedCostUsd,
-    },
-    select: {
-      id: true,
-      tokensUsed: true,
-      estimatedCostUsd: true,
-    },
-  });
+  return db.updateDocumentCost(input);
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCasesDb } from "@/lib/cases/repository";
+import { caseExists, listCasePersons } from "@/lib/cases/repository";
 import { jsonError } from "@/lib/http";
 
 type RouteContext = {
@@ -15,42 +15,13 @@ function toIsoDate(value: unknown) {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params;
-  const db = getCasesDb() as unknown as {
-    case: {
-      findUnique(args: Record<string, unknown>): Promise<unknown | null>;
-    };
-    person: {
-      findMany(args: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
-    };
-  };
-  const exists = await db.case.findUnique({
-    where: {
-      id,
-    },
-    select: {
-      id: true,
-    },
-  });
+  const exists = await caseExists(id);
 
   if (!exists) {
     return jsonError("ケースが見つかりません。", 404);
   }
 
-  const persons = await db.person.findMany({
-    where: {
-      caseId: id,
-    },
-    include: {
-      events: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
+  const persons = await listCasePersons(id);
 
   return NextResponse.json(
     persons.map((person) => ({
@@ -61,8 +32,8 @@ export async function GET(_request: Request, context: RouteContext) {
       gender: person.gender ?? null,
       address: person.address ?? null,
       sourceDocumentId: String(person.sourceDocumentId ?? ""),
-      personEvents: Array.isArray(person.events)
-        ? person.events.map((event) => ({
+      personEvents: Array.isArray(person.personEvents)
+        ? person.personEvents.map((event) => ({
             id: String(event.id),
             eventType: String(event.eventType ?? ""),
             eventDate: toIsoDate(event.eventDate),

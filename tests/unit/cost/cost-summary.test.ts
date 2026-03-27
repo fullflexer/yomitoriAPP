@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   getCaseCostSummary,
-  type CostSummaryPrisma,
+  type CostSummaryDb,
 } from "../../../src/lib/cost/cost-summary";
 import {
   recordDocumentCost,
-  type RecordDocumentCostPrisma,
+  type RecordDocumentCostDb,
 } from "../../../src/lib/cost/record-document-cost";
 
 type StoredDocument = {
@@ -17,50 +17,53 @@ type StoredDocument = {
   createdAt: Date;
 };
 
-function createCostPrisma(seed: StoredDocument[]) {
+function createCostDb(seed: StoredDocument[]) {
   const state = {
     documents: [...seed],
   };
 
-  const prisma: RecordDocumentCostPrisma & CostSummaryPrisma = {
-    document: {
-      async update(args) {
-        const index = state.documents.findIndex(
-          (document) => document.id === args.where.id,
-        );
+  const db: RecordDocumentCostDb & CostSummaryDb = {
+    async updateDocumentCost(input) {
+      const index = state.documents.findIndex(
+        (document) => document.id === input.documentId,
+      );
 
-        if (index === -1) {
-          throw new Error(`Document not found: ${args.where.id}`);
-        }
+      if (index === -1) {
+        throw new Error(`Document not found: ${input.documentId}`);
+      }
 
-        const nextDocument = {
-          ...state.documents[index],
-          tokensUsed: args.data.tokensUsed,
-          estimatedCostUsd: args.data.estimatedCostUsd,
-        };
+      const nextDocument = {
+        ...state.documents[index],
+        tokensUsed: input.tokensUsed,
+        estimatedCostUsd: input.estimatedCostUsd,
+      };
 
-        state.documents[index] = nextDocument;
+      state.documents[index] = nextDocument;
 
-        return {
-          id: nextDocument.id,
-          tokensUsed: nextDocument.tokensUsed,
-          estimatedCostUsd: nextDocument.estimatedCostUsd,
-        };
-      },
-      async findMany(args) {
-        return state.documents
-          .filter((document) => document.caseId === args.where.caseId)
-          .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
-      },
+      return {
+        id: nextDocument.id,
+        tokensUsed: nextDocument.tokensUsed,
+        estimatedCostUsd: nextDocument.estimatedCostUsd,
+      };
+    },
+    async listDocumentsByCaseId(caseId) {
+      return state.documents
+        .filter((document) => document.caseId === caseId)
+        .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+        .map((document) => ({
+          id: document.id,
+          tokensUsed: document.tokensUsed,
+          estimatedCostUsd: document.estimatedCostUsd,
+        }));
     },
   };
 
-  return { prisma, state };
+  return { db, state };
 }
 
 describe("document cost persistence", () => {
   it("documents.tokens_used と estimated_cost_usd を保存する", async () => {
-    const { prisma, state } = createCostPrisma([
+    const { db, state } = createCostDb([
       {
         id: "doc-1",
         caseId: "case-1",
@@ -70,11 +73,14 @@ describe("document cost persistence", () => {
       },
     ]);
 
-    const saved = await recordDocumentCost(prisma, {
-      documentId: "doc-1",
-      tokensUsed: 2048,
-      estimatedCostUsd: 0.1234,
-    });
+    const saved = await recordDocumentCost(
+      {
+        documentId: "doc-1",
+        tokensUsed: 2048,
+        estimatedCostUsd: 0.1234,
+      },
+      db,
+    );
 
     expect(saved).toEqual({
       id: "doc-1",
@@ -95,7 +101,7 @@ describe("case cost summary", () => {
   });
 
   it("案件内 documents の tokens/cost を正しく集計する", async () => {
-    const { prisma } = createCostPrisma([
+    const { db } = createCostDb([
       {
         id: "doc-1",
         caseId: "case-1",
@@ -120,8 +126,8 @@ describe("case cost summary", () => {
     ]);
 
     const summary = await getCaseCostSummary({
-      prisma,
       caseId: "case-1",
+      db,
     });
 
     expect(summary).toEqual({
@@ -165,9 +171,6 @@ describe("case cost summary", () => {
     vi.doMock("../../../src/lib/cost/cost-summary", () => ({
       getCaseCostSummary: getCaseCostSummaryMock,
     }));
-    vi.doMock("../../../src/lib/db/client", () => ({
-      prisma: {},
-    }));
 
     const { GET } = await import(
       "../../../src/app/api/cases/[id]/cost-summary/route"
@@ -182,7 +185,6 @@ describe("case cost summary", () => {
     );
 
     expect(getCaseCostSummaryMock).toHaveBeenCalledWith({
-      prisma: {},
       caseId: "case-1",
     });
     expect(response.status).toBe(200);

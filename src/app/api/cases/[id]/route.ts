@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
 import {
+  deleteCase,
   getCaseAggregate,
-  getCasesDb,
+  updateCase,
 } from "@/lib/cases/repository";
 import { serializeCaseAggregate } from "@/lib/cases/workflow";
 import { jsonError, parseJsonBody, sanitizeTitle } from "@/lib/http";
@@ -62,12 +63,10 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    await getCasesDb().case.update({
-      where: {
-        id,
-      },
-      data,
-    });
+    const updated = await updateCase(id, data);
+    if (!updated) {
+      return jsonError("ケースが見つかりません。", 404);
+    }
   } catch {
     return jsonError("ケースが見つかりません。", 404);
   }
@@ -84,13 +83,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
 
-  try {
-    await getCasesDb().case.delete({
-      where: {
-        id,
-      },
-    });
-  } catch {
+  const deleted = await deleteCase(id);
+  if (!deleted) {
     return jsonError("ケースが見つかりません。", 404);
   }
 
