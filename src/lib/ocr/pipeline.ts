@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { query, withTransaction, type DbQuery, type DbTransactionClient } from "@/lib/db/client";
 import { OcrAdapter } from "@/lib/ocr/adapter";
-import { MockOcrProvider } from "@/lib/ocr/providers/mock";
+import { createOcrProvider } from "@/lib/ocr/provider-factory";
 import type { DocumentType, OcrProvider, OcrResult } from "@/lib/ocr/types";
 import { parseKosekiOcrResult } from "@/lib/parser/koseki-parser";
 import type { ParseResult, ParsedEvent, ParsedPerson } from "@/lib/parser/types";
@@ -567,11 +567,5 @@ async function defaultDownloadObject(key: string) {
 }
 
 async function createDefaultProvider(): Promise<OcrProvider> {
-  if (process.env.OCR_PROVIDER === "mock") {
-    return new MockOcrProvider();
-  }
-
-  const { ClaudeVisionProvider } = await import("@/lib/ocr/providers/claude-vision");
-
-  return new ClaudeVisionProvider();
+  return createOcrProvider();
 }

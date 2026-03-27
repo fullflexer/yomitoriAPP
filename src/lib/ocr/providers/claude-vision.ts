@@ -1,16 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 import { buildKosekiExtractionPrompt } from "@/lib/ocr/prompts/koseki-extract";
-import type {
-  KosekiEventField,
-  KosekiField,
-  KosekiFields,
-  KosekiPersonField,
-  OcrInput,
-  OcrProvider,
-  OcrResult,
-  OcrWarning,
-} from "@/lib/ocr/types";
+import { parseOcrPayload } from "@/lib/ocr/providers/shared";
+import type { OcrInput, OcrProvider, OcrResult } from "@/lib/ocr/types";
 
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 const DEFAULT_MAX_TOKENS = 4096;
@@ -27,9 +19,6 @@ type ClaudeVisionProviderOptions = {
   model?: string;
   maxTokens?: number;
 };
-
-type ClaudeOcrPayload = Omit<OcrResult, "processingTimeMs" | "tokensUsed"> &
-  Partial<Pick<OcrResult, "processingTimeMs" | "tokensUsed">>;
 
 export class ClaudeVisionProvider implements OcrProvider {
   private client?: Anthropic;
@@ -85,7 +74,9 @@ export class ClaudeVisionProvider implements OcrProvider {
       throw new Error("Claude Vision returned no text content");
     }
 
-    const payload = parseClaudePayload(responseText);
+    const payload = parseOcrPayload(responseText, {
+      providerName: "Claude Vision",
+    });
 
     return {
       documentType: input.documentType,
@@ -123,209 +114,6 @@ function getSupportedImageMimeType(mimeType: string): SupportedImageMimeType {
     default:
       throw new Error(`Unsupported image mime type for Claude Vision: ${mimeType}`);
   }
-}
-
-function parseClaudePayload(responseText: string): ClaudeOcrPayload {
-  const jsonCandidate = extractJsonObject(responseText);
-  const parsed = JSON.parse(jsonCandidate) as unknown;
-
-  if (!parsed || typeof parsed !== "object") {
-    throw new Error("Claude Vision payload must be a JSON object");
-  }
-
-  const payload = parsed as Partial<ClaudeOcrPayload>;
-
-  if (typeof payload.rawText !== "string") {
-    throw new Error("Claude Vision payload is missing rawText");
-  }
-
-  return {
-    rawText: payload.rawText,
-    fields: parseFields(payload.fields),
-    confidence: parseConfidence(payload.confidence, "confidence"),
-    warnings: parseWarnings(payload.warnings),
-  };
-}
-
-function extractJsonObject(responseText: string) {
-  const fencedMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fencedMatch?.[1]?.trim() ?? responseText.trim();
-  const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-
-  if (start < 0 || end < 0 || end <= start) {
-    throw new Error("Claude Vision response did not contain a JSON object");
-  }
-
-  return candidate.slice(start, end + 1);
-}
-
-function parseFields(value: unknown): KosekiFields {
-  if (!value || typeof value !== "object") {
-    throw new Error("Claude Vision payload is missing fields");
-  }
-
-  const fields = value as Partial<KosekiFields>;
-
-  return {
-    headOfHousehold: parseField(fields.headOfHousehold, "fields.headOfHousehold"),
-    registeredAddress: parseField(
-      fields.registeredAddress,
-      "fields.registeredAddress",
-    ),
-    persons: parsePersons(fields.persons),
-  };
-}
-
-function parsePersons(value: unknown): KosekiPersonField[] {
-  if (!Array.isArray(value)) {
-    throw new Error("Claude Vision payload fields.persons must be an array");
-  }
-
-  return value.map((person, personIndex) => {
-    if (!person || typeof person !== "object") {
-      throw new Error(
-        `Claude Vision payload fields.persons[${personIndex}] must be an object`,
-      );
-    }
-
-    const typedPerson = person as Partial<KosekiPersonField>;
-
-    return {
-      name: parseField(typedPerson.name, `fields.persons[${personIndex}].name`),
-      relationship:
-        typedPerson.relationship === undefined
-          ? undefined
-          : parseField(
-              typedPerson.relationship,
-              `fields.persons[${personIndex}].relationship`,
-            ),
-      birthDate: parseField(
-        typedPerson.birthDate,
-        `fields.persons[${personIndex}].birthDate`,
-      ),
-      deathDate:
-        typedPerson.deathDate === undefined
-          ? undefined
-          : parseField(
-              typedPerson.deathDate,
-              `fields.persons[${personIndex}].deathDate`,
-            ),
-      gender:
-        typedPerson.gender === undefined
-          ? undefined
-          : parseField(typedPerson.gender, `fields.persons[${personIndex}].gender`),
-      address:
-        typedPerson.address === undefined
-          ? undefined
-          : parseField(typedPerson.address, `fields.persons[${personIndex}].address`),
-      events: parseEvents(typedPerson.events, personIndex),
-    };
-  });
-}
-
-function parseEvents(value: unknown, personIndex: number): KosekiEventField[] {
-  if (!Array.isArray(value)) {
-    throw new Error(
-      `Claude Vision payload fields.persons[${personIndex}].events must be an array`,
-    );
-  }
-
-  return value.map((event, eventIndex) => {
-    if (!event || typeof event !== "object") {
-      throw new Error(
-        `Claude Vision payload fields.persons[${personIndex}].events[${eventIndex}] must be an object`,
-      );
-    }
-
-    const typedEvent = event as Partial<KosekiEventField>;
-
-    if (typeof typedEvent.type !== "string") {
-      throw new Error(
-        `Claude Vision payload fields.persons[${personIndex}].events[${eventIndex}].type must be a string`,
-      );
-    }
-
-    return {
-      type: typedEvent.type,
-      date: parseField(
-        typedEvent.date,
-        `fields.persons[${personIndex}].events[${eventIndex}].date`,
-      ),
-      detail: parseField(
-        typedEvent.detail,
-        `fields.persons[${personIndex}].events[${eventIndex}].detail`,
-      ),
-    };
-  });
-}
-
-function parseField(value: unknown, fieldPath: string): KosekiField {
-  if (!value || typeof value !== "object") {
-    throw new Error(`Claude Vision payload ${fieldPath} must be an object`);
-  }
-
-  const field = value as Partial<KosekiField>;
-
-  if (typeof field.value !== "string") {
-    throw new Error(`Claude Vision payload ${fieldPath}.value must be a string`);
-  }
-
-  if (field.rawText !== undefined && typeof field.rawText !== "string") {
-    throw new Error(`Claude Vision payload ${fieldPath}.rawText must be a string`);
-  }
-
-  return {
-    value: field.value,
-    confidence: parseConfidence(field.confidence, `${fieldPath}.confidence`),
-    rawText: field.rawText,
-  };
-}
-
-function parseWarnings(value: unknown): OcrWarning[] {
-  if (!Array.isArray(value)) {
-    throw new Error("Claude Vision payload warnings must be an array");
-  }
-
-  return value.map((warning, warningIndex) => {
-    if (!warning || typeof warning !== "object") {
-      throw new Error(`Claude Vision payload warnings[${warningIndex}] must be an object`);
-    }
-
-    const typedWarning = warning as Partial<OcrWarning>;
-
-    if (typeof typedWarning.code !== "string") {
-      throw new Error(
-        `Claude Vision payload warnings[${warningIndex}].code must be a string`,
-      );
-    }
-
-    if (typeof typedWarning.message !== "string") {
-      throw new Error(
-        `Claude Vision payload warnings[${warningIndex}].message must be a string`,
-      );
-    }
-
-    if (typedWarning.field !== undefined && typeof typedWarning.field !== "string") {
-      throw new Error(
-        `Claude Vision payload warnings[${warningIndex}].field must be a string`,
-      );
-    }
-
-    return {
-      code: typedWarning.code,
-      message: typedWarning.message,
-      field: typedWarning.field,
-    };
-  });
-}
-
-function parseConfidence(value: unknown, fieldPath: string) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
-    throw new Error(`Claude Vision payload ${fieldPath} must be between 0 and 1`);
-  }
-
-  return value;
 }
 
 function getTotalTokensUsed(

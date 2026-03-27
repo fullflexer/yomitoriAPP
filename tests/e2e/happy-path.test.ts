@@ -20,7 +20,7 @@ test("Basic Auth + case create + consent upload + inheritance + diagram", async 
 
   await page.goto(`/cases/${caseId}/upload`);
   await expect(
-    page.getByText("戸籍画像をClaude Vision API（Anthropic社）に送信することに同意します"),
+    page.getByText("戸籍画像の OCR 処理を実行することに同意します"),
   ).toBeVisible();
 
   await page

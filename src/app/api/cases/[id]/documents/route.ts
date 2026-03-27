@@ -73,7 +73,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (!consent) {
     return jsonError(
-      "OCR と Claude Vision API を利用するには同意が必要です。",
+      "OCR 処理を利用するには同意が必要です。",
       400,
       { code: "consent_required" },
     );

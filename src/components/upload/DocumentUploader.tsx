@@ -30,7 +30,7 @@ export function DocumentUploader({ caseId }: DocumentUploaderProps) {
     }
 
     if (!consentChecked) {
-      setError("Claude Vision API への送信同意が必要です。");
+      setError("OCR 処理の実行に同意してください。");
       return;
     }
 
@@ -104,12 +104,12 @@ export function DocumentUploader({ caseId }: DocumentUploaderProps) {
               onChange={(event) => setConsentChecked(event.target.checked)}
             />
             <span className="text-sm leading-6 text-slate-700">
-              戸籍画像をClaude Vision API（Anthropic社）に送信することに同意します
+              戸籍画像の OCR 処理を実行することに同意します
             </span>
           </label>
 
           <p className="text-xs text-slate-500">
-            同意がない場合、OCR と Claude Vision API は呼び出されません。
+            同意がない場合、OCR 処理は開始されません。
           </p>
 
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}

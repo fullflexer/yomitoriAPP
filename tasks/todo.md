@@ -215,3 +215,20 @@
 - `src/types/prisma-client.d.ts` は不要になったため削除した。`src/` / `scripts/cleanup-expired.ts` / `tests/` から `@prisma/client` / `getCasesDb()` / Prisma delegate 呼び出しは除去済み。残存する `prisma` 文字列は `scripts/test-infra.sh` の Prisma CLI 呼び出しのみで、今回対象外。
 - 検証: `pnpm exec tsc --noEmit --pretty false` 成功。`pnpm exec vitest run tests/unit/` 成功（17 files, 54 tests passed）。`pnpm exec vitest run tests/integration/ocr-pipeline.test.ts` 成功（1 file, 1 test passed）。
 - サブエージェント review は `code_reviewer` を新規 spawn したが、この sandbox では完了レスポンスを回収できず timeout のまま shutdown した。代替として local typecheck + unit/integration test を再実行し、blocking issue は未検出。
+
+## 2026-03-27 GLM-OCR Provider
+- [x] 既存 OCR provider / prompt / pipeline の再利用ポイントを確認し、`glm-ocr` 実装方針を確定する
+- [x] `src/lib/ocr/providers/glm-ocr.ts` を追加し、Ollama `/api/chat` 呼び出し・JSON 抽出・`OcrResult` 変換を実装する
+- [x] `src/lib/ocr/provider-factory.ts` を追加し、`OCR_PROVIDER` に応じて `claude` / `glm-ocr|ollama` / `mock` を切り替える
+- [x] `src/lib/ocr/pipeline.ts` と必要箇所を更新し、既定 provider を factory 経由へ差し替える
+- [x] `tests/unit/ocr/glm-ocr.test.ts` を追加し、リクエスト構築・レスポンス変換・接続失敗を検証する
+- [x] `.env.example` を更新し、Ollama 向け環境変数の既定値を追記する
+- [x] 対象テストと型検査を実行し、結果と review を `tasks/todo.md` に追記する
+
+## Review
+- 着手前メモ: `OcrAdapter` の provider 注入は維持し、`pipeline.ts` の既定 provider 生成だけを factory 化する。`glm-ocr` は Claude 実装と同等の JSON 妥当性チェックを持たせ、confidence 未返却時のみ `0.7` を補完する。
+- `src/lib/ocr/providers/glm-ocr.ts` を追加し、`fetch` で `http://localhost:11434/api/chat` を直接叩く `GlmOcrProvider` を実装した。画像は base64 で `messages[0].images` に載せ、`buildKosekiExtractionPrompt()` と document type hint を送る。`tokensUsed` は `eval_count + prompt_eval_count`、接続失敗は base URL を含む明示エラーへ包んでいる。
+- `src/lib/ocr/providers/shared.ts` を追加し、Claude/GLM-OCR 共通の JSON 抽出・型検証を集約した。`counterpartName` など既存 parser が参照する optional event metadata も保持する。`src/lib/ocr/providers/claude-vision.ts` はこの shared parser を使うよう整理した。
+- `src/lib/ocr/provider-factory.ts` を追加し、既定 provider を `glm-ocr` に変更した。`src/lib/ocr/pipeline.ts` の default provider 生成はこの factory 経由に差し替えた。`OcrAdapter` 自体の constructor 契約は変更していない。
+- `.env.example` に `OCR_PROVIDER=glm-ocr` / `OLLAMA_BASE_URL` / `OLLAMA_MODEL` を追加した。既定 provider と齟齬が出ないよう、upload UI と API の consent 文言は `Claude Vision` 固定から generic な `OCR 処理` 表現へ更新し、`tests/e2e/happy-path.test.ts` も追従させた。
+- 検証: `pnpm exec tsc --noEmit --pretty false` 成功。`pnpm exec vitest run tests/unit/ocr/adapter.test.ts tests/unit/ocr/glm-ocr.test.ts tests/unit/consent/consent.test.ts tests/integration/ocr-pipeline.test.ts` 成功（4 files, 10 tests passed）。
