@@ -1,6 +1,5 @@
 import { buildKosekiExtractionPrompt } from "@/lib/ocr/prompts/koseki-extract";
-import { parseOcrPayload } from "@/lib/ocr/providers/shared";
-import type { OcrInput, OcrProvider, OcrResult } from "@/lib/ocr/types";
+import type { KosekiFields, OcrInput, OcrProvider, OcrResult } from "@/lib/ocr/types";
 
 const DEFAULT_BASE_URL = "http://localhost:11434";
 const DEFAULT_MODEL = "glm-ocr";
@@ -73,21 +72,56 @@ export class GlmOcrProvider implements OcrProvider {
       throw new Error("GLM-OCR returned no text content");
     }
 
-    const payload = parseOcrPayload(responseText, {
-      providerName: "GLM-OCR",
-      defaultConfidence: DEFAULT_CONFIDENCE,
-    });
+    // GLM-OCR は汎用 OCR（テキスト抽出のみ）。構造化 JSON は返さない。
+    // rawText として返し、構造化はパイプラインの後段で行う。
+    const emptyFields = {
+      headOfHousehold: { value: "", confidence: DEFAULT_CONFIDENCE },
+      registeredAddress: { value: "", confidence: DEFAULT_CONFIDENCE },
+      persons: [],
+    };
+
+    // responseText から簡易的にフィールドを抽出する試み
+    const fields = tryExtractFieldsFromText(responseText, DEFAULT_CONFIDENCE);
 
     return {
       documentType: input.documentType,
-      rawText: payload.rawText,
-      fields: payload.fields,
-      confidence: payload.confidence,
-      warnings: payload.warnings,
+      rawText: responseText,
+      fields: fields ?? emptyFields,
+      confidence: DEFAULT_CONFIDENCE,
+      warnings: [{ code: "raw_ocr", message: "GLM-OCR raw text output — manual review recommended" }],
       tokensUsed: getTotalTokensUsed(responseBody),
       processingTimeMs: Date.now() - startedAt,
     };
   }
+}
+
+function tryExtractFieldsFromText(text: string, confidence: number) {
+  try {
+    // JSON が埋まっている場合はパースを試みる
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+      if (parsed.fields && typeof parsed.fields === "object") {
+        return undefined; // parseOcrPayload に任せる
+      }
+    }
+  } catch {
+    // JSON ではない → テキストから簡易抽出
+  }
+
+  // テキストベースの簡易抽出
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const mkField = (value: string) => ({ value, confidence });
+
+  // 氏名パターン: 「氏名」「名前」「戸主」等の後の文字列
+  const nameMatch = text.match(/(?:氏名|名前|戸主|筆頭者)[：:\s]*(.+)/);
+  const addressMatch = text.match(/(?:本籍|住所)[：:\s]*(.+)/);
+
+  return {
+    headOfHousehold: mkField(nameMatch?.[1]?.trim() ?? lines[0] ?? ""),
+    registeredAddress: mkField(addressMatch?.[1]?.trim() ?? ""),
+    persons: [],
+  };
 }
 
 function getTotalTokensUsed(response: OllamaGenerateResponse) {
