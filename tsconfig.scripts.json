@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": ".",
+    "outDir": ".codex-build",
+    "noEmit": false
+  },
+  "include": [
+    "scripts/bench-ocr.ts",
+    "scripts/generate-synthetic-koseki.ts",
+    "scripts/ocr-bench-shared.ts",
+    "src/**/*.d.ts"
+  ]
+}

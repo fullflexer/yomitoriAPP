@@ -1,0 +1,67 @@
+{
+  "headOfHousehold": {
+    "value": "空環玲央",
+    "confidence": 1,
+    "rawText": "筆頭者 空環玲央"
+  },
+  "registeredAddress": {
+    "value": "夕凪県潮見市星屑町5丁目2番8号",
+    "confidence": 1,
+    "rawText": "本籍 夕凪県潮見市星屑町5丁目2番8号"
+  },
+  "persons": [
+    {
+      "name": { "value": "空環玲央", "confidence": 1, "personId": "p1" },
+      "relationship": { "value": "筆頭者", "confidence": 1 },
+      "birthDate": { "value": "昭和40年6月4日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "夕凪県潮見市星屑町5丁目2番8号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和40年6月4日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成6年12月18日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "空環汐里", "confidence": 1, "personId": "p2" },
+      "relationship": { "value": "配偶者", "confidence": 1 },
+      "birthDate": { "value": "昭和45年8月15日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "夕凪県潮見市星屑町5丁目2番8号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和45年8月15日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成6年12月18日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "空環紫乃", "confidence": 1, "personId": "p3" },
+      "relationship": { "value": "長女", "confidence": 1 },
+      "birthDate": { "value": "平成8年4月29日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "夕凪県潮見市星屑町5丁目2番8号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成8年4月29日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "空環湊", "confidence": 1, "personId": "p4" },
+      "relationship": { "value": "長男", "confidence": 1 },
+      "birthDate": { "value": "平成10年10月10日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "夕凪県潮見市星屑町5丁目2番8号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成10年10月10日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "空環和香", "confidence": 1, "personId": "p5" },
+      "relationship": { "value": "二女", "confidence": 1 },
+      "birthDate": { "value": "平成14年12月1日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "天原県水ノ輪市南風町8丁目3番2号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成14年12月1日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "令和5年7月17日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    }
+  ]
+}

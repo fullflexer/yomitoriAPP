@@ -1,0 +1,69 @@
+{
+  "headOfHousehold": {
+    "value": "白峰院晴人",
+    "confidence": 1,
+    "rawText": "筆頭者 白峰院晴人"
+  },
+  "registeredAddress": {
+    "value": "天原県水ノ輪市南風町8丁目3番2号",
+    "confidence": 1,
+    "rawText": "本籍 天原県水ノ輪市南風町8丁目3番2号"
+  },
+  "persons": [
+    {
+      "name": { "value": "白峰院晴人", "confidence": 1, "personId": "p1" },
+      "relationship": { "value": "筆頭者", "confidence": 1 },
+      "birthDate": { "value": "昭和39年1月16日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "天原県水ノ輪市南風町8丁目3番2号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和39年1月16日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成元年1月8日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "白峰院千景", "confidence": 1, "personId": "p2" },
+      "relationship": { "value": "配偶者", "confidence": 1 },
+      "birthDate": { "value": "昭和43年6月26日", "confidence": 1 },
+      "deathDate": { "value": "令和2年9月9日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "天原県水ノ輪市南風町8丁目3番2号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和43年6月26日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成元年1月8日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } },
+        { "type": "death", "date": { "value": "令和2年9月9日", "confidence": 1 }, "detail": { "value": "死亡", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "白峰院琴羽", "confidence": 1, "personId": "p3" },
+      "relationship": { "value": "長女", "confidence": 1 },
+      "birthDate": { "value": "平成3年11月12日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "北雲県木漏市青玻璃町1丁目9番3号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成3年11月12日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成30年3月30日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "白峰院結仁", "confidence": 1, "personId": "p4" },
+      "relationship": { "value": "長男", "confidence": 1 },
+      "birthDate": { "value": "平成7年2月2日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "天原県水ノ輪市南風町8丁目3番2号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成7年2月2日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "白峰院依月", "confidence": 1, "personId": "p5" },
+      "relationship": { "value": "二女", "confidence": 1 },
+      "birthDate": { "value": "平成12年5月20日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "天原県水ノ輪市南風町8丁目3番2号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成12年5月20日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "headOfHousehold": {
+    "value": "星見ヶ丘珀",
+    "confidence": 1,
+    "rawText": "筆頭者 星見ヶ丘珀"
+  },
+  "registeredAddress": {
+    "value": "霧丘県鳴砂市光環町4丁目6番5号",
+    "confidence": 1,
+    "rawText": "本籍 霧丘県鳴砂市光環町4丁目6番5号"
+  },
+  "persons": [
+    {
+      "name": { "value": "星見ヶ丘珀", "confidence": 1, "personId": "p1" },
+      "relationship": { "value": "筆頭者", "confidence": 1 },
+      "birthDate": { "value": "昭和43年4月14日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "霧丘県鳴砂市光環町4丁目6番5号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和43年4月14日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成8年8月8日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "星見ヶ丘瑠花", "confidence": 1, "personId": "p2" },
+      "relationship": { "value": "配偶者", "confidence": 1 },
+      "birthDate": { "value": "昭和47年3月3日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "霧丘県鳴砂市光環町4丁目6番5号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和47年3月3日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成8年8月8日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "星見ヶ丘颯", "confidence": 1, "personId": "p3" },
+      "relationship": { "value": "長男", "confidence": 1 },
+      "birthDate": { "value": "平成10年6月6日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "霧丘県鳴砂市光環町4丁目6番5号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成10年6月6日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "星見ヶ丘澪", "confidence": 1, "personId": "p4" },
+      "relationship": { "value": "長女", "confidence": 1 },
+      "birthDate": { "value": "平成13年1月19日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "霧丘県鳴砂市光環町4丁目6番5号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成13年1月19日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "星見ヶ丘朱里", "confidence": 1, "personId": "p5" },
+      "relationship": { "value": "二女", "confidence": 1 },
+      "birthDate": { "value": "平成16年4月1日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "霧丘県鳴砂市光環町4丁目6番5号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成16年4月1日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "令和6年4月1日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Case {
+  id                String         @id @default(uuid()) @db.Uuid
+  title             String
+  status            String
+  matchingStatus    String         @map("matching_status")
+  inheritanceResult Json           @map("inheritance_result") @db.JsonB
+  deceasedPersonId  String?        @map("deceased_person_id") @db.Uuid
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deceasedPerson    Person?        @relation("DeceasedPerson", fields: [deceasedPersonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  documents         Document[]
+  heirs             Heir[]
+  persons           Person[]       @relation("CasePersons")
+  relationships     Relationship[]
+
+  @@index([deceasedPersonId])
+  @@map("cases")
+}
+
+model Document {
+  id               String         @id @default(uuid()) @db.Uuid
+  caseId           String         @map("case_id") @db.Uuid
+  r2Key            String         @map("r2_key")
+  originalFilename String         @map("original_filename")
+  documentType     String         @map("document_type")
+  status           String
+  ocrResult        Json           @map("ocr_result") @db.JsonB
+  requiresReview   Boolean        @default(false) @map("requires_review")
+  reviewReason     String[]       @default([]) @map("review_reason")
+  ocrConfidence    Decimal        @default(0) @map("ocr_confidence") @db.Decimal(5, 4)
+  tokensUsed       Int?           @map("tokens_used")
+  estimatedCostUsd Decimal?       @map("estimated_cost_usd") @db.Decimal(10, 4)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  case             Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  personEvents     PersonEvent[]
+  persons          Person[]
+
+  @@index([caseId])
+  @@map("documents")
+}
+
+model Person {
+  id                    String           @id @default(uuid()) @db.Uuid
+  caseId                String           @map("case_id") @db.Uuid
+  sourceDocumentId      String           @map("source_document_id") @db.Uuid
+  fullName              String           @map("full_name")
+  fullNameKana          String?          @map("full_name_kana")
+  birthDate             DateTime?        @map("birth_date") @db.Date
+  deathDate             DateTime?        @map("death_date") @db.Date
+  gender                String?
+  address               String?
+  canonicalPersonId     String?          @map("canonical_person_id") @db.Uuid
+  mergeConfidence       Decimal?         @map("merge_confidence") @db.Decimal(5, 4)
+  createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  canonicalPerson       Person?          @relation("CanonicalPerson", fields: [canonicalPersonId], references: [id], onDelete: SetNull)
+  case                  Case             @relation("CasePersons", fields: [caseId], references: [id], onDelete: Cascade)
+  counterpartEvents     PersonEvent[]    @relation("CounterpartPersonEvents")
+  deceasedForCases      Case[]           @relation("DeceasedPerson")
+  events                PersonEvent[]    @relation("PersonEvents")
+  heirs                 Heir[]
+  incomingRelationships Relationship[]   @relation("RelationshipToPerson")
+  mergedPersons         Person[]         @relation("CanonicalPerson")
+  outgoingRelationships Relationship[]   @relation("RelationshipFromPerson")
+  sourceDocument        Document         @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+
+  @@index([caseId])
+  @@index([sourceDocumentId])
+  @@index([canonicalPersonId])
+  @@map("persons")
+}
+
+model PersonEvent {
+  id                  String    @id @default(uuid()) @db.Uuid
+  personId            String    @map("person_id") @db.Uuid
+  documentId          String    @map("document_id") @db.Uuid
+  eventType           String    @map("event_type")
+  eventDate           DateTime? @map("event_date") @db.Date
+  eventDateRaw        String?   @map("event_date_raw")
+  counterpartPersonId String?   @map("counterpart_person_id") @db.Uuid
+  rawText             String?   @map("raw_text")
+  confidence          Decimal?  @db.Decimal(5, 4)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  counterpartPerson   Person?   @relation("CounterpartPersonEvents", fields: [counterpartPersonId], references: [id], onDelete: SetNull)
+  document            Document  @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  person              Person    @relation("PersonEvents", fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+  @@index([documentId])
+  @@index([counterpartPersonId])
+  @@map("person_events")
+}
+
+model Relationship {
+  id           String             @id @default(uuid()) @db.Uuid
+  caseId       String             @map("case_id") @db.Uuid
+  fromPersonId String             @map("from_person_id") @db.Uuid
+  toPersonId   String             @map("to_person_id") @db.Uuid
+  relationType String             @map("relation_type")
+  source       String
+  confidence   Decimal?           @db.Decimal(5, 4)
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  case         Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  fromPerson   Person             @relation("RelationshipFromPerson", fields: [fromPersonId], references: [id], onDelete: Cascade)
+  toPerson     Person             @relation("RelationshipToPerson", fields: [toPersonId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([fromPersonId])
+  @@index([toPersonId])
+  @@map("relationships")
+}
+
+model Heir {
+  id               String     @id @default(uuid()) @db.Uuid
+  caseId           String     @map("case_id") @db.Uuid
+  personId         String     @map("person_id") @db.Uuid
+  heirClass        String     @map("heir_class")
+  shareNumerator   Int        @map("share_numerator")
+  shareDenominator Int        @map("share_denominator")
+  status           String
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  case             Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  person           Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([personId])
+  @@map("heirs")
+}

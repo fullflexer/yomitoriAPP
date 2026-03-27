@@ -1,0 +1,48 @@
+{
+  "headOfHousehold": {
+    "value": "風見野朔",
+    "confidence": 1,
+    "rawText": "筆頭者 風見野朔"
+  },
+  "registeredAddress": {
+    "value": "蒼葉県空見市灯台町3丁目7番9号",
+    "confidence": 1,
+    "rawText": "本籍 蒼葉県空見市灯台町3丁目7番9号"
+  },
+  "persons": [
+    {
+      "name": { "value": "風見野朔", "confidence": 1, "personId": "p1" },
+      "relationship": { "value": "筆頭者", "confidence": 1 },
+      "birthDate": { "value": "昭和41年2月8日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "蒼葉県空見市灯台町3丁目7番9号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和41年2月8日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成元年10月10日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "風見野凪紗", "confidence": 1, "personId": "p2" },
+      "relationship": { "value": "配偶者", "confidence": 1 },
+      "birthDate": { "value": "昭和44年9月1日", "confidence": 1 },
+      "deathDate": { "value": "令和4年2月3日", "confidence": 1, "rawText": "令和4年2月3日" },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "蒼葉県空見市灯台町3丁目7番9号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和44年9月1日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成元年10月10日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } },
+        { "type": "death", "date": { "value": "令和4年2月3日", "confidence": 1 }, "detail": { "value": "死亡", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "風見野柊真", "confidence": 1, "personId": "p3" },
+      "relationship": { "value": "長男", "confidence": 1 },
+      "birthDate": { "value": "平成4年7月19日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "蒼葉県空見市灯台町3丁目7番9号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成4年7月19日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    }
+  ]
+}

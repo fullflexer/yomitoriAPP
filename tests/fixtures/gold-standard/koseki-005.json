@@ -1,0 +1,57 @@
+{
+  "headOfHousehold": {
+    "value": "天城野奏",
+    "confidence": 1,
+    "rawText": "筆頭者 天城野奏"
+  },
+  "registeredAddress": {
+    "value": "霞峰県真砂市朝霧町6丁目1番4号",
+    "confidence": 1,
+    "rawText": "本籍 霞峰県真砂市朝霧町6丁目1番4号"
+  },
+  "persons": [
+    {
+      "name": { "value": "天城野奏", "confidence": 1, "personId": "p1" },
+      "relationship": { "value": "筆頭者", "confidence": 1 },
+      "birthDate": { "value": "昭和42年12月24日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "霞峰県真砂市朝霧町6丁目1番4号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和42年12月24日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成5年5月5日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "天城野美澄", "confidence": 1, "personId": "p2" },
+      "relationship": { "value": "配偶者", "confidence": 1 },
+      "birthDate": { "value": "昭和49年4月8日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "霞峰県真砂市朝霧町6丁目1番4号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和49年4月8日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成5年5月5日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "天城野煌", "confidence": 1, "personId": "p3" },
+      "relationship": { "value": "長男", "confidence": 1 },
+      "birthDate": { "value": "平成7年3月3日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "陽紋県瑞霞市七彩町2丁目4番7号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成7年3月3日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "令和2年11月22日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "天城野由良", "confidence": 1, "personId": "p4" },
+      "relationship": { "value": "長女", "confidence": 1 },
+      "birthDate": { "value": "平成11年1月7日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "霞峰県真砂市朝霧町6丁目1番4号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成11年1月7日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    }
+  ]
+}

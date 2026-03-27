@@ -1,0 +1,56 @@
+{
+  "headOfHousehold": {
+    "value": "七瀬原律",
+    "confidence": 1,
+    "rawText": "筆頭者 七瀬原律"
+  },
+  "registeredAddress": {
+    "value": "陽紋県瑞霞市七彩町2丁目4番7号",
+    "confidence": 1,
+    "rawText": "本籍 陽紋県瑞霞市七彩町2丁目4番7号"
+  },
+  "persons": [
+    {
+      "name": { "value": "七瀬原律", "confidence": 1, "personId": "p1" },
+      "relationship": { "value": "筆頭者", "confidence": 1 },
+      "birthDate": { "value": "昭和41年11月11日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "陽紋県瑞霞市七彩町2丁目4番7号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和41年11月11日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成4年2月16日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "七瀬原千波", "confidence": 1, "personId": "p2" },
+      "relationship": { "value": "配偶者", "confidence": 1 },
+      "birthDate": { "value": "昭和45年5月31日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "陽紋県瑞霞市七彩町2丁目4番7号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和45年5月31日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成4年2月16日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "七瀬原朋希", "confidence": 1, "personId": "p3" },
+      "relationship": { "value": "長男", "confidence": 1 },
+      "birthDate": { "value": "平成6年7月7日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "陽紋県瑞霞市七彩町2丁目4番7号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成6年7月7日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "七瀬原灯", "confidence": 1, "personId": "p4" },
+      "relationship": { "value": "長女", "confidence": 1 },
+      "birthDate": { "value": "平成9年9月23日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "陽紋県瑞霞市七彩町2丁目4番7号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成9年9月23日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    }
+  ]
+}

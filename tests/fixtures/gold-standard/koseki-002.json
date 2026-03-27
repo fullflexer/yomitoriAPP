@@ -1,0 +1,56 @@
+{
+  "headOfHousehold": {
+    "value": "星代湊人",
+    "confidence": 1,
+    "rawText": "筆頭者 星代湊人"
+  },
+  "registeredAddress": {
+    "value": "白砂県雲井市新灯町4丁目5番6号",
+    "confidence": 1,
+    "rawText": "本籍 白砂県雲井市新灯町4丁目5番6号"
+  },
+  "persons": [
+    {
+      "name": { "value": "星代湊人", "confidence": 1, "personId": "p1" },
+      "relationship": { "value": "筆頭者", "confidence": 1 },
+      "birthDate": { "value": "昭和43年7月9日", "confidence": 1 },
+      "gender": { "value": "男", "confidence": 1 },
+      "address": { "value": "白砂県雲井市新灯町4丁目5番6号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和43年7月9日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成2年4月11日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "星代環", "confidence": 1, "personId": "p2" },
+      "relationship": { "value": "配偶者", "confidence": 1 },
+      "birthDate": { "value": "昭和46年1月30日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "白砂県雲井市新灯町4丁目5番6号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "昭和46年1月30日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } },
+        { "type": "marriage", "date": { "value": "平成2年4月11日", "confidence": 1 }, "detail": { "value": "婚姻", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "星代瀬名", "confidence": 1, "personId": "p3" },
+      "relationship": { "value": "長女", "confidence": 1 },
+      "birthDate": { "value": "平成6年6月18日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "白砂県雲井市新灯町4丁目5番6号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成6年6月18日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    },
+    {
+      "name": { "value": "星代詩乃", "confidence": 1, "personId": "p4" },
+      "relationship": { "value": "二女", "confidence": 1 },
+      "birthDate": { "value": "平成9年12月2日", "confidence": 1 },
+      "gender": { "value": "女", "confidence": 1 },
+      "address": { "value": "白砂県雲井市新灯町4丁目5番6号", "confidence": 1 },
+      "events": [
+        { "type": "birth", "date": { "value": "平成9年12月2日", "confidence": 1 }, "detail": { "value": "出生", "confidence": 1 } }
+      ]
+    }
+  ]
+}
